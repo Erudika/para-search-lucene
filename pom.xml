@@ -4,7 +4,7 @@
 
 	<groupId>com.erudika</groupId>
 	<artifactId>para-search-lucene</artifactId>
-	<version>1.29.0-SNAPSHOT</version>
+	<version>1.28.0-SNAPSHOT</version>
 
 	<packaging>jar</packaging>
 	<name>Para Lucene Plugin</name>

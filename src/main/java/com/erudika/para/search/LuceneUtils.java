@@ -895,8 +895,12 @@ public final class LuceneUtils {
 		try {
 			for (IndexWriter indexWriter : WRITERS.values()) {
 				if (indexWriter != null) {
-					indexWriter.commit();
-					indexWriter.close();
+					if (indexWriter.hasUncommittedChanges()) {
+						indexWriter.commit();
+					}
+					if (indexWriter.isOpen()) {
+						indexWriter.close();
+					}
 					if (indexWriter.getDirectory() != null) {
 						indexWriter.getDirectory().close();
 					}
