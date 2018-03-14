@@ -328,12 +328,24 @@ public class LuceneSearch implements Search {
 		return (long) count(appid, query);
 	}
 
-	@Override
+//	@Override
+	/**
+	 *
+	 * @param dao dao
+	 * @param app app
+	 * @param pager pager
+	 * @return value
+	 */
 	public boolean rebuildIndex(DAO dao, App app, Pager... pager) {
 		return LuceneUtils.rebuildIndex(dao, app, pager);
 	}
 
-	@Override
+//	@Override
+	/**
+	 *
+	 * @param queryString query
+	 * @return value
+	 */
 	public boolean isValidQueryString(String queryString) {
 		return LuceneUtils.isValidQueryString(queryString);
 	}

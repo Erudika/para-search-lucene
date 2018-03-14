@@ -901,9 +901,10 @@ public final class LuceneUtils {
 					if (indexWriter.isOpen()) {
 						indexWriter.close();
 					}
-					if (indexWriter.getDirectory() != null) {
-						indexWriter.getDirectory().close();
-					}
+					// redudant
+//					if (indexWriter.getDirectory() != null) {
+//						indexWriter.getDirectory().close();
+//					}
 				}
 			}
 			WRITERS.clear();
