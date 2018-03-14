@@ -10,7 +10,7 @@ addons:
   sonarcloud:
     organization: "erudika"
     token:
-      secure: "HU11SwQ8NqCxvn0xkkOKDlGJwVkKM4Cwf13DMjq+1q7V5QK3+rQXf8kbawBIMLr7L8rkmOYSxUCKg94PRTbrxBFRvaLZsuZhgOAte3gB2DNNGd2FCiT6GuXnzYJRkYXZe4V0SsXC0TQJKAHw3RhZSkBUgmVmojR9Q4SjPcTSfU2bGDenURtr+0B87FJptl+K1pKvl6vVXNLpMYGf3Kr1IokPrB8coCSWL98klN4G7+2u+raFiFs1FbWB/334iwVs+LoGr+fVVRw2kz4Tk5jH4NAWjQLXTuYMTc0hH9cI8Gx6PNoMUtQlWttyrzBsGLULzrso0f4eujHaHkL5h9tLD9B39cSn2I7lwoAeg5BG7AZ0xs6XUSr1G+wyJzHkkjPYZczlntQUY6w/nxNFq6O7lw9dvsxwY+Uh7gtdS3UWF/cz2Bs1bL9eg0FV5lYU9WnwyBR0nkCtffwAwhMEfE/aMSKjJHUKMpERyusyy8voOFWl8oDSUN1ZaGfRx3hyJoRKzDTLChMyYJ6Hoym1f/y9t1IO2UL/PynuMqaphbzBCBM49aSNqRDLNRM/94LzSj5kcwDQ6LfA54QM9AhsmNMHAW83F78gFVCCxwUw3zqOKiH7z7UYASHNLLcKOHmOv0nqy51zPMN/nh7+SUfY6iiMNVY/iHs383Iob2cDpOJ8n5o="
+      secure: "nkkJbWtMczX4Pp3bGzFBlhnp3sthghgBRAPKfnsMw3dNoD8fMbB1EyrXicme6wExB5wzht0NbYR3WCnB5iMq7qMeRCh7M/eG9ecyZPOiCl4rRcK1GKLLjnSTFTxG2tbDTSVf66UPcbwwtK/d5XX6dfHvd2GwyAV1OnPn0OzzAfhOa4IkKmL3hy/+z14t9x9H+pRhX8uJItVBJeFOoeKvOdGEWA1MfjYmSfF3mriULpONrMorN9ql60vs0qgLsli8l1/5P8n7y9sm0N7K+98PntItZfDgX+XNjRQP+0qM6jUziXCOyx+6Phly/QqTg33zkaZhGNRHkahLGdwrAzj6W+Cjtn2uSU+6wM4HJQjaRc/7Jc2/IAlRRhde/RCFyit2KHbXmL+rEoby8A+GWHxbcR8a/5625kgY+QD4bOY/6hmt1GF1yRxpQmCuI3cjLVjgt5sP+GZpoR1aDaUHdF5qap+zTeWxYbzNUHgQD/2U+lW4I+0pZAmqq2PUPdW49u2EM3qVxBF81RWa3Wh63RLUdqUqo2rwIXLcA3mDPLDvGJdMsGIy9seXTBof3boPBc8DA4CKYLJ2/euZFWzF/QlUPyT5ltl93dKxlaE4aKvsm/K9Xqt/3U7HWslPqOwA8yeEmRuYCSSrIvUQhycTE6mmHCQ95YVaNmkCk0h+ps1dcHo="
 cache:
   directories:
     - '$HOME/.m2/repository'
@@ -23,4 +23,4 @@ notifications:
     on_success: change
     on_failure: always
     on_start: never
-    
+
