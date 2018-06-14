@@ -334,6 +334,11 @@ public class LuceneSearch implements Search {
 	}
 
 	@Override
+	public boolean rebuildIndex(DAO dao, App app, String destinationIndex, Pager... pager) {
+		return LuceneUtils.rebuildIndex(dao, app, pager);
+	}
+
+	@Override
 	public boolean isValidQueryString(String queryString) {
 		return LuceneUtils.isValidQueryString(queryString);
 	}
