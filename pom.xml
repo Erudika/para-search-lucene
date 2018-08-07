@@ -55,14 +55,14 @@
 		<skipTests>false</skipTests>
 		<skipITs>${skipTests}</skipITs>
 		<skipUTs>${skipTests}</skipUTs>
-		<luceneVer>7.3.1</luceneVer>
+		<luceneVer>7.4.0</luceneVer>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.erudika</groupId>
 			<artifactId>para-core</artifactId>
-			<version>1.29.2</version>
+			<version>1.30.0</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -240,7 +240,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.10.4</version>
+						<version>3.0.1</version>
 						<executions>
 							<execution>
 								<id>attach-javadocs</id>
