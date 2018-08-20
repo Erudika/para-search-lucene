@@ -28,6 +28,7 @@ import com.erudika.para.utils.Pager;
 import com.erudika.para.utils.Utils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import static com.fasterxml.jackson.databind.node.JsonNodeType.NUMBER;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -43,6 +44,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -105,6 +107,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import static org.apache.lucene.search.SortField.Type.DOUBLE;
 import static org.apache.lucene.search.SortField.Type.LONG;
 import static org.apache.lucene.search.SortField.Type.STRING;
 import org.apache.lucene.search.SortedNumericSortField;
@@ -114,6 +117,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.NumericUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -221,6 +225,7 @@ public final class LuceneUtils {
 		NOT_ANALYZED_FIELDS.add("tags");
 		NOT_ANALYZED_FIELDS.add("email");
 		NOT_ANALYZED_FIELDS.add("appid");
+		NOT_ANALYZED_FIELDS.add("votes");
 		NOT_ANALYZED_FIELDS.add("groups");
 		NOT_ANALYZED_FIELDS.add("updated");
 		NOT_ANALYZED_FIELDS.add("password");
@@ -444,8 +449,20 @@ public final class LuceneUtils {
 					String txt = val.asText("null");
 					Field f = getField(prefix, txt);
 					if (!(f instanceof LatLonPoint)) {
-						doc.add(new SortedDocValuesField(prefix, new BytesRef(txt.length() > 32766 ?
-								StringUtils.truncate(txt, 32766) : txt)));
+						if (val.getNodeType().equals(NUMBER)) {
+							switch (val.numberType()) {
+								case FLOAT:
+								case DOUBLE:
+									doc.add(new SortedNumericDocValuesField(prefix,
+											NumericUtils.doubleToSortableLong(val.asDouble())));
+									break;
+								default:
+									doc.add(new SortedNumericDocValuesField(prefix, val.asLong()));
+							}
+						} else {
+							doc.add(new SortedDocValuesField(prefix, new BytesRef(txt.length() > 32766 ?
+									StringUtils.truncate(txt, 32766) : txt)));
+						}
 					}
 					doc.add(f);
 					break;
@@ -771,7 +788,7 @@ public final class LuceneUtils {
 				}
 			} else {
 				int start = (pageNum < 1 || pageNum > Config.MAX_PAGES) ? 0 : (pageNum - 1) * maxPerPage;
-				Sort sort = new Sort(getSortField(pager));
+				Sort sort = new Sort(getSortField(type, pager));
 				TopFieldCollector collector = TopFieldCollector.create(sort, DEFAULT_LIMIT, true, false, false, false);
 				isearcher.search(query, collector);
 				topDocs = collector.topDocs(start, maxPerPage);
@@ -807,11 +824,22 @@ public final class LuceneUtils {
 		return null;
 	}
 
-	private static SortField getSortField(Pager pager) {
+	private static SortField getSortField(String type, Pager pager) {
 		if (DOC_ID_FIELD_NAME.equals(pager.getSortby())) {
 			return new SortedNumericSortField(DOC_ID_FIELD_NAME, LONG, pager.isDesc());
 		} else {
-			return new SortField(pager.getSortby(), STRING, pager.isDesc());
+			Optional<java.lang.reflect.Field> field = Utils.getAllDeclaredFields(ParaObjectUtils.toClass(type)).stream().
+					filter(f -> f.getName().equals(pager.getSortby())).findFirst();
+			if (field.isPresent() && Number.class.isAssignableFrom(field.get().getType())) {
+				if (Float.class.isAssignableFrom(field.get().getType()) ||
+						Double.class.isAssignableFrom(field.get().getType())) {
+					return new SortedNumericSortField(pager.getSortby(), DOUBLE, pager.isDesc());
+				} else {
+					return new SortedNumericSortField(pager.getSortby(), LONG, pager.isDesc());
+				}
+			} else {
+				return new SortField(pager.getSortby(), STRING, pager.isDesc());
+			}
 		}
 	}
 
@@ -901,10 +929,6 @@ public final class LuceneUtils {
 					if (indexWriter.isOpen()) {
 						indexWriter.close();
 					}
-					// redudant
-//					if (indexWriter.getDirectory() != null) {
-//						indexWriter.getDirectory().close();
-//					}
 				}
 			}
 			WRITERS.clear();
