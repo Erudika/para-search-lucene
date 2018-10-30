@@ -28,7 +28,6 @@ import com.erudika.para.utils.Pager;
 import com.erudika.para.utils.Utils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import static com.fasterxml.jackson.databind.node.JsonNodeType.NUMBER;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -420,53 +419,53 @@ public final class LuceneUtils {
 
 	private static void addFieldToStack(String prefix, JsonNode val, LinkedList<Map<String, JsonNode>> stack, Document doc)
 			throws JsonProcessingException {
-		if (val != null) {
-			switch (val.getNodeType()) {
-				case OBJECT:
-					stack.push(Collections.singletonMap(prefix, val));
-					break;
-				case ARRAY:
-					StringBuilder sb = new StringBuilder();
-					for (Iterator<JsonNode> iterator1 = val.elements(); iterator1.hasNext();) {
-						JsonNode next = iterator1.next();
-						String textValue;
-						if (next.isObject() || next.isArray()) {
-							textValue = ParaObjectUtils.getJsonWriterNoIdent().writeValueAsString(next);
-						} else {
-							textValue = next.asText();
-						}
-						if (!StringUtils.isBlank(textValue)) {
-							sb.append(textValue).append(",");
-							doc.add(getField(prefix, textValue));
-						}
+		switch (val.getNodeType()) {
+			case OBJECT:
+				stack.push(Collections.singletonMap(prefix, val));
+				break;
+			case ARRAY:
+				StringBuilder sb = new StringBuilder();
+				for (Iterator<JsonNode> iterator1 = val.elements(); iterator1.hasNext();) {
+					JsonNode next = iterator1.next();
+					String textValue;
+					if (next.isObject() || next.isArray()) {
+						textValue = ParaObjectUtils.getJsonWriterNoIdent().writeValueAsString(next);
+					} else {
+						textValue = next.asText();
 					}
-					if (sb.length() > 0) {
-						String txt = sb.length() > 32766 ? StringUtils.truncate(sb.toString(), 32766) : sb.toString();
-						doc.add(new SortedDocValuesField(prefix, new BytesRef(txt)));
+					if (!StringUtils.isBlank(textValue)) {
+						sb.append(textValue).append(",");
+						doc.add(getField(prefix, textValue));
 					}
-					break;
-				default:
-					String txt = val.asText("null");
-					Field f = getField(prefix, txt);
-					if (!(f instanceof LatLonPoint)) {
-						if (val.getNodeType().equals(NUMBER)) {
-							switch (val.numberType()) {
-								case FLOAT:
-								case DOUBLE:
-									doc.add(new SortedNumericDocValuesField(prefix,
-											NumericUtils.doubleToSortableLong(val.asDouble())));
-									break;
-								default:
-									doc.add(new SortedNumericDocValuesField(prefix, val.asLong()));
-							}
-						} else {
-							doc.add(new SortedDocValuesField(prefix, new BytesRef(txt.length() > 32766 ?
-									StringUtils.truncate(txt, 32766) : txt)));
+				}
+				if (sb.length() > 0) {
+					String txt = sb.length() > 32766 ? StringUtils.truncate(sb.toString(), 32766) : sb.toString();
+					doc.add(new SortedDocValuesField(prefix, new BytesRef(txt)));
+				}
+				break;
+			case NULL:
+				break;
+			default:
+				String txt = val.asText("null");
+				Field f = getField(prefix, txt);
+				if (!(f instanceof LatLonPoint)) {
+					if (val.isNumber()) {
+						switch (val.numberType()) {
+							case FLOAT:
+							case DOUBLE:
+								doc.add(new SortedNumericDocValuesField(prefix,
+										NumericUtils.doubleToSortableLong(val.asDouble())));
+								break;
+							default:
+								doc.add(new SortedNumericDocValuesField(prefix, val.asLong()));
 						}
+					} else {
+						doc.add(new SortedDocValuesField(prefix, new BytesRef(txt.length() > 32766 ?
+								StringUtils.truncate(txt, 32766) : txt)));
 					}
-					doc.add(f);
-					break;
-			}
+				}
+				doc.add(f);
+				break;
 		}
 	}
 
@@ -788,7 +787,7 @@ public final class LuceneUtils {
 				}
 			} else {
 				int start = (pageNum < 1 || pageNum > Config.MAX_PAGES) ? 0 : (pageNum - 1) * maxPerPage;
-				Sort sort = new Sort(getSortField(type, pager));
+				Sort sort = new Sort(getSortFieldForQuery(type, pager));
 				TopFieldCollector collector = TopFieldCollector.create(sort, DEFAULT_LIMIT, true, false, false, false);
 				isearcher.search(query, collector);
 				topDocs = collector.topDocs(start, maxPerPage);
@@ -824,7 +823,7 @@ public final class LuceneUtils {
 		return null;
 	}
 
-	private static SortField getSortField(String type, Pager pager) {
+	private static SortField getSortFieldForQuery(String type, Pager pager) {
 		if (DOC_ID_FIELD_NAME.equals(pager.getSortby())) {
 			return new SortedNumericSortField(DOC_ID_FIELD_NAME, LONG, pager.isDesc());
 		} else {
