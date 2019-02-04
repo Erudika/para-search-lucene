@@ -30,7 +30,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.file.FileSystems;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -114,6 +113,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
@@ -140,6 +140,7 @@ public final class LuceneUtils {
 	private static final String[] IGNORED_FIELDS;
 
 	private static final Map<String, IndexWriter> WRITERS = new ConcurrentHashMap<String, IndexWriter>();
+//	private static S3Directory s3Directory;
 
 	/**
 	 * Default analyzer.
@@ -869,9 +870,7 @@ public final class LuceneUtils {
 
 	private static DirectoryReader getIndexReader(String appid) {
 		try {
-			String dataDir = Config.getConfigParam("lucene.dir", Paths.get(".").toAbsolutePath().normalize().toString());
-			Path path = FileSystems.getDefault().getPath(dataDir, "data", getIndexName(appid));
-			FSDirectory indexDir = FSDirectory.open(path);
+			Directory indexDir = getDirectory(appid);
 			if (DirectoryReader.indexExists(indexDir)) {
 				return DirectoryReader.open(indexDir);
 			}
@@ -885,13 +884,10 @@ public final class LuceneUtils {
 		synchronized (WRITERS) {
 			if (!WRITERS.containsKey(appid)) {
 				try {
-					String luceneDir = Paths.get(".").toAbsolutePath().normalize().toString();
-					String dataDir = Config.getConfigParam("lucene.dir", luceneDir);
-					Path path = FileSystems.getDefault().getPath(dataDir, "data", getIndexName(appid));
 					Analyzer analyzer = new StandardAnalyzer();
 					IndexWriterConfig config = new IndexWriterConfig(analyzer);
 					config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
-					WRITERS.put(appid, new IndexWriter(FSDirectory.open(path), config));
+					WRITERS.put(appid, new IndexWriter(getDirectory(appid), config));
 				} catch (IOException ex) {
 					logger.warn("Couldn't get IndexWriter - '{}' does not exist: {}", getIndexName(appid), ex.getMessage());
 				}
@@ -903,6 +899,20 @@ public final class LuceneUtils {
 			}
 		}
 		return WRITERS.get(appid);
+	}
+
+	private static Directory getDirectory(String appid) throws IOException {
+//		if (Config.getConfigParam("lucene.storage", "").equalsIgnoreCase("s3")) {
+//			if (s3Directory == null) {
+//				s3Directory = new S3Directory(Config.getConfigParam("lucene.s3_prefix", "") + getIndexName(appid));
+//				s3Directory.create();
+//			}
+//			return s3Directory;
+//		} else {
+			return FSDirectory.open(FileSystems.getDefault().
+					getPath(Config.getConfigParam("lucene.dir", Paths.get(".").toAbsolutePath().normalize().toString()),
+							"data", getIndexName(appid)));
+//		}
 	}
 
 	private static void closeIndexReader(DirectoryReader ireader) {
