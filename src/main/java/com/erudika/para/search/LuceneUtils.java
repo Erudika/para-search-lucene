@@ -17,6 +17,8 @@
  */
 package com.erudika.para.search;
 
+import com.erudika.para.DestroyListener;
+import com.erudika.para.Para;
 import com.erudika.para.core.Address;
 import com.erudika.para.core.App;
 import com.erudika.para.core.ParaObject;
@@ -891,8 +893,8 @@ public final class LuceneUtils {
 				} catch (IOException ex) {
 					logger.warn("Couldn't get IndexWriter - '{}' does not exist: {}", getIndexName(appid), ex.getMessage());
 				}
-				Runtime.getRuntime().addShutdownHook(new Thread() {
-					public void run() {
+				Para.addDestroyListener(new DestroyListener() {
+					public void onDestroy() {
 						closeIndexWriters();
 					}
 				});
