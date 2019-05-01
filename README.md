@@ -49,7 +49,7 @@ This tells Para to use the `LuceneSearch` as the `Search` implementation.
 
 ### Dependencies
 
-- [Lucene](https://lucene.apache.org/) 7.x
+- [Apache Lucene](https://lucene.apache.org/)
 - [Para Core](https://github.com/Erudika/para)
 
 ## License
