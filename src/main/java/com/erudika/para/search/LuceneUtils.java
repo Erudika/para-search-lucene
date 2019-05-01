@@ -89,10 +89,10 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.MultiFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
@@ -115,6 +115,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
@@ -651,7 +652,7 @@ public final class LuceneUtils {
 				}
 
 				Builder qsPart = new BooleanQuery.Builder();
-				qsPart.add(qs(queryString, MultiFields.getIndexedFields(ireader)), BooleanClause.Occur.MUST);
+				qsPart.add(qs(queryString, FieldInfos.getIndexedFields(ireader)), BooleanClause.Occur.MUST);
 				Builder filterIdsPart = new BooleanQuery.Builder();
 				for (String id : parentids) {
 					filterIdsPart.add(new TermQuery(new Term(Config._ID, id)), BooleanClause.Occur.SHOULD);
@@ -688,7 +689,7 @@ public final class LuceneUtils {
 			if (ireader != null) {
 				Pager page = getPager(pager);
 				List<P> docs = searchQuery(dao, appid, searchQueryRaw(ireader, appid, type,
-						qs(query, MultiFields.getIndexedFields(ireader)), page), page);
+						qs(query, FieldInfos.getIndexedFields(ireader)), page), page);
 				return docs;
 			}
 		} catch (Exception e) {
@@ -786,18 +787,18 @@ public final class LuceneUtils {
 							new Object[]{NumberUtils.toLong(pager.getLastKey())}), query, maxPerPage,
 							new Sort(new SortedNumericSortField(DOC_ID_FIELD_NAME, LONG, pager.isDesc())));
 				} else {
-					topDocs = new TopDocs(0, new ScoreDoc[0], 0);
+					topDocs = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
 				}
 			} else {
 				int start = (pageNum < 1 || pageNum > Config.MAX_PAGES) ? 0 : (pageNum - 1) * maxPerPage;
 				Sort sort = new Sort(getSortFieldForQuery(type, pager));
-				TopFieldCollector collector = TopFieldCollector.create(sort, DEFAULT_LIMIT, true, false, false, false);
+				TopFieldCollector collector = TopFieldCollector.create(sort, DEFAULT_LIMIT, DEFAULT_LIMIT);
 				isearcher.search(query, collector);
 				topDocs = collector.topDocs(start, maxPerPage);
 			}
 
 			ScoreDoc[] hits = topDocs.scoreDocs;
-			pager.setCount(topDocs.totalHits);
+			pager.setCount(topDocs.totalHits.value);
 
 			Document[] docs = new Document[hits.length];
 			for (int i = 0; i < hits.length; i++) {
