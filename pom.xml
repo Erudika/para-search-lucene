@@ -93,6 +93,11 @@
 			<artifactId>lucene-queryparser</artifactId>
 			<version>${luceneVer}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.lucene</groupId>
+			<artifactId>lucene-backward-codecs</artifactId>
+			<version>${luceneVer}</version>
+		</dependency>
 
 		<!-- TESTING -->
 		<dependency>
