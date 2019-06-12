@@ -44,7 +44,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -89,6 +88,7 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
@@ -791,7 +791,7 @@ public final class LuceneUtils {
 				}
 			} else {
 				int start = (pageNum < 1 || pageNum > Config.MAX_PAGES) ? 0 : (pageNum - 1) * maxPerPage;
-				Sort sort = new Sort(getSortFieldForQuery(type, pager));
+				Sort sort = new Sort(getSortFieldForQuery(ireader, type, pager));
 				TopFieldCollector collector = TopFieldCollector.create(sort, DEFAULT_LIMIT, DEFAULT_LIMIT);
 				isearcher.search(query, collector);
 				topDocs = collector.topDocs(start, maxPerPage);
@@ -827,18 +827,17 @@ public final class LuceneUtils {
 		return null;
 	}
 
-	private static SortField getSortFieldForQuery(String type, Pager pager) {
+	private static SortField getSortFieldForQuery(DirectoryReader ireader, String type, Pager pager) {
 		if (DOC_ID_FIELD_NAME.equals(pager.getSortby())) {
 			return new SortedNumericSortField(DOC_ID_FIELD_NAME, LONG, pager.isDesc());
 		} else {
-			Optional<java.lang.reflect.Field> field = Utils.getAllDeclaredFields(ParaObjectUtils.toClass(type)).stream().
-					filter(f -> f.getName().equals(pager.getSortby())).findFirst();
-			if (field.isPresent() && Number.class.isAssignableFrom(field.get().getType())) {
-				if (Float.class.isAssignableFrom(field.get().getType()) ||
-						Double.class.isAssignableFrom(field.get().getType())) {
-					return new SortedNumericSortField(pager.getSortby(), DOUBLE, pager.isDesc());
-				} else {
-					return new SortedNumericSortField(pager.getSortby(), LONG, pager.isDesc());
+			FieldInfo finfo = FieldInfos.getMergedFieldInfos(ireader).fieldInfo(pager.getSortby());
+			if (finfo != null) {
+				switch (finfo.getDocValuesType()) {
+					case SORTED_NUMERIC:
+						return new SortedNumericSortField(pager.getSortby(), DOUBLE, pager.isDesc());
+					default:
+						return new SortField(pager.getSortby(), STRING, pager.isDesc());
 				}
 			} else {
 				return new SortField(pager.getSortby(), STRING, pager.isDesc());

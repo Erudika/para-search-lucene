@@ -21,6 +21,7 @@ import com.erudika.para.core.ParaObject;
 import com.erudika.para.persistence.DAO;
 import static com.erudika.para.search.SearchTest.u;
 import com.erudika.para.utils.Config;
+import com.erudika.para.utils.Pager;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,4 +72,19 @@ public class LuceneSearchIT extends SearchTest {
 		assertEquals(u.getId(), res2.get(0).getId());
 	}
 
+	@Test
+	public void testSortBy() {
+		// many terms
+		Pager p = new Pager(2);
+		p.setSortby("number");
+		List<ParaObject> res1 = s.findQuery(s1.getType(), "sentence", p);
+		assertEquals(2, res1.size());
+
+		p = new Pager(2);
+		p.setSortby("properties.number");
+		List<ParaObject> res2 = s.findQuery(s1.getType(), "sentence", p);
+		assertEquals(2, res2.size());
+		assertEquals(s2.getId(), res2.get(0).getId());
+		assertEquals(s1.getId(), res2.get(1).getId());
+	}
 }

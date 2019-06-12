@@ -110,10 +110,12 @@ public abstract class SearchTest {
 
 		s1 = new Sysprop("s1");
 		s1.addProperty("text", "This is a little test sentence. Testing, one, two, three.");
+		s1.addProperty("number", 5);
 		s1.setTimestamp(Utils.timestamp());
 
 		s2 = new Sysprop("s2");
 		s2.addProperty("text", "We are testing this thing. This sentence is a test. One, two.");
+		s2.addProperty("number", 10);
 		s2.setTimestamp(Utils.timestamp());
 
 		Sysprop linked1 = new Sysprop("link1");
