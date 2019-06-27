@@ -218,13 +218,12 @@ public class LuceneSearch implements Search {
 		MoreLikeThisQuery q;
 		if (fields == null || fields.length == 0) {
 			q = new MoreLikeThisQuery(liketext, new String[]{Config._NAME}, LuceneUtils.ANALYZER, Config._NAME);
-			q.setMinDocFreq(1);
-			q.setMinTermFrequency(1);
 		} else {
 			q = new MoreLikeThisQuery(liketext, fields, LuceneUtils.ANALYZER, fields[0]);
-			q.setMinDocFreq(1);
-			q.setMinTermFrequency(1);
 		}
+		q.setMinDocFreq(1);
+		q.setMinTermFrequency(1);
+		q.setPercentTermsToMatch(0.4f);
 
 		if (!StringUtils.isBlank(filterKey)) {
 			query = new BooleanQuery.Builder().
