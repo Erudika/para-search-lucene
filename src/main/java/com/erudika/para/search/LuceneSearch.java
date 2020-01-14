@@ -106,6 +106,11 @@ public class LuceneSearch implements Search {
 		if (po == null || StringUtils.isBlank(po.getId()) || StringUtils.isBlank(appid)) {
 			return;
 		}
+		if (ParaObjectUtils.getAnnotatedFields(po).containsKey(LuceneUtils.NESTED_FIELD_NAME)) {
+			// clean up nested objects when parent is deleted
+			Query q = new TermQuery(new Term(LuceneUtils.NESTED_FIELD_NAME + Config._PARENTID, po.getId()));
+			unindexDocuments(appid, q);
+		}
 		unindexDocuments(appid, Collections.singletonList(po.getId()));
 	}
 
@@ -130,12 +135,22 @@ public class LuceneSearch implements Search {
 			return;
 		}
 		ArrayList<String> ids = new ArrayList<>();
+		BooleanQuery.Builder fb = new BooleanQuery.Builder();
 		for (P po : objects) {
 			if (po != null) {
 				ids.add(po.getId());
+				if (ParaObjectUtils.getAnnotatedFields(po).containsKey(LuceneUtils.NESTED_FIELD_NAME)) {
+					// clean up nested objects when parent is deleted
+					Query q = new TermQuery(new Term(LuceneUtils.NESTED_FIELD_NAME + Config._PARENTID, po.getId()));
+					fb.add(new BooleanClause(q, BooleanClause.Occur.SHOULD));
+				}
 			}
 		}
 		unindexDocuments(appid, ids);
+		BooleanQuery q = fb.build();
+		if (!q.clauses().isEmpty()) {
+			unindexDocuments(appid, q);
+		}
 	}
 
 	@Override

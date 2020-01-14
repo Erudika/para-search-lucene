@@ -130,9 +130,9 @@ import org.slf4j.LoggerFactory;
 public final class LuceneUtils {
 
 	private static final Logger logger = LoggerFactory.getLogger(LuceneUtils.class);
+	protected static final String NESTED_FIELD_NAME = "nstd";
 	private static final String SOURCE_FIELD_NAME = "_source";
 	private static final String DOC_ID_FIELD_NAME = "_docid";
-	private static final String NESTED_FIELD_NAME = "nstd";
 	private static final FieldType ID_FIELD;
 	private static final FieldType DOC_ID_FIELD;
 	private static final FieldType SOURCE_FIELD;
@@ -236,6 +236,7 @@ public final class LuceneUtils {
 		NOT_ANALYZED_FIELDS.add("creatorid");
 		NOT_ANALYZED_FIELDS.add("timestamp");
 		NOT_ANALYZED_FIELDS.add("identifier");
+		NOT_ANALYZED_FIELDS.add("nstdparentid");
 		NOT_ANALYZED_FIELDS.add("token");
 
 		// these fields are not indexed
@@ -510,14 +511,15 @@ public final class LuceneUtils {
 				Object nstd = data.get(NESTED_FIELD_NAME);
 				if (nstd instanceof List) {
 					LinkedList<Document> docs = new LinkedList<>();
-					Map<String, Object> dataWithoutNestedField = new HashMap<>(data);
-					dataWithoutNestedField.remove(NESTED_FIELD_NAME);
-					jsonDoc = ParaObjectUtils.getJsonMapper().valueToTree(dataWithoutNestedField);
+					Map<String, Object> dataWithNestedField = new HashMap<>(data);
+					//dataWithNestedField.remove(NESTED_FIELD_NAME);
+					jsonDoc = ParaObjectUtils.getJsonMapper().valueToTree(dataWithNestedField);
 					for (Map<String, Object> obj : ((List<Map<String, Object>>) nstd)) {
 						Map<String, Object> object = new HashMap<>(obj);
 						object.put(Config._ID, Utils.getNewId());
 						// the nested object's type is forced to be equal to its parent, otherwise breaks queries
 						object.put(Config._TYPE, data.get(Config._TYPE));
+						object.put(NESTED_FIELD_NAME + Config._PARENTID, data.get(Config._ID));
 						JsonNode nestedJsonDoc = ParaObjectUtils.getJsonMapper().valueToTree(object);
 						Document nestedDoc = new Document();
 						addDocumentFields(nestedJsonDoc, nestedDoc);
@@ -601,7 +603,8 @@ public final class LuceneUtils {
 		}
 
 		if (!nullz.isEmpty()) {
-			logger.warn("Found {} objects that are indexed but not in the database: {}",
+			logger.warn("Found {} objects that are still indexed but deleted from the database: {}. "
+					+ "Sometimes this happens if you do a search right after a delete operation.",
 					nullz.size(), nullz);
 		}
 		return results;
