@@ -513,6 +513,7 @@ public final class LuceneUtils {
 					LinkedList<Document> docs = new LinkedList<>();
 					Map<String, Object> dataWithNestedField = new HashMap<>(data);
 					//dataWithNestedField.remove(NESTED_FIELD_NAME);
+					dataWithNestedField.put("nstdobject", "true");
 					jsonDoc = ParaObjectUtils.getJsonMapper().valueToTree(dataWithNestedField);
 					for (Map<String, Object> obj : ((List<Map<String, Object>>) nstd)) {
 						Map<String, Object> object = new HashMap<>(obj);
@@ -565,33 +566,28 @@ public final class LuceneUtils {
 		return ParaObjectUtils.fromJSON(doc.get(SOURCE_FIELD_NAME));
 	}
 
-	private static <P extends ParaObject> void readObjectFromIndex(Document hit, ArrayList<P> results,
-			Map<String, String> keysAndSources, Pager pager) {
+	private static <P extends ParaObject> P readObjectFromIndex(Document hit) {
 		P result = documentToParaObject(hit);
 		if (result != null) {
-			if (keysAndSources.containsKey(result.getId())) {
-				pager.setCount(pager.getCount() - 1); // substract duplicates due to nested objects (nstd)
-			} else {
-				results.add(result);
-			}
 			logger.debug("Search result from index: appid={}, id={}", result.getAppid(), result.getId());
 		}
+		return result;
 	}
 
 	@SuppressWarnings("unchecked")
 	private static <P extends ParaObject> List<P> readResultsFromDatabase(DAO dao, String appid,
-			Map<String, String> keysAndSources) {
+			Map<String, P> keysAndSources) {
 		if (keysAndSources == null || keysAndSources.isEmpty()) {
 			return Collections.emptyList();
 		}
 		ArrayList<P> results = new ArrayList<>(keysAndSources.size());
 		ArrayList<String> nullz = new ArrayList<>(results.size());
 		Map<String, P> fromDB = dao.readAll(appid, new ArrayList<>(keysAndSources.keySet()), true);
-		for (Map.Entry<String, String> entry : keysAndSources.entrySet()) {
+		for (Map.Entry<String, P> entry : keysAndSources.entrySet()) {
 			String key = entry.getKey();
 			P pobj = fromDB.get(key);
 			if (pobj == null) {
-				pobj = ParaObjectUtils.fromJSON(entry.getValue());
+				pobj = entry.getValue();
 				// object is still in index but not in DB
 				if (pobj != null && appid.equals(pobj.getAppid()) && pobj.getStored()) {
 					nullz.add(key);
@@ -739,15 +735,16 @@ public final class LuceneUtils {
 			return Collections.emptyList();
 		}
 		ArrayList<P> results = new ArrayList<>(hits.length);
-		LinkedHashMap<String, String> keysAndSources = new LinkedHashMap<>(hits.length);
+		LinkedHashMap<String, P> keysAndSources = new LinkedHashMap<>(hits.length);
 		try {
 			boolean readFromIndex = Config.getConfigBoolean("read_from_index", false);
 			for (Document hit : hits) {
-				if (readFromIndex) {
-					readObjectFromIndex(hit, results, keysAndSources, pager);
-				}
-				if (hit != null && hit.get(Config._ID) != null) {
-					keysAndSources.put(hit.get(Config._ID), hit.get(SOURCE_FIELD_NAME));
+				P result = readObjectFromIndex(hit);
+				if (keysAndSources.containsKey(result.getId())) {
+					pager.setCount(pager.getCount() - 1); // substract duplicates due to nested objects (nstd)
+				} else {
+					results.add(result);
+					keysAndSources.put(result.getId(), result);
 				}
 			}
 			if (!readFromIndex) {

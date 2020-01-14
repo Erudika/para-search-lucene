@@ -212,6 +212,19 @@ public abstract class SearchTest {
 		assertEquals(1, n2.size());
 		assertEquals(2, ((Linker) n1.get(0)).getNstd().size());
 		assertEquals(2, ((Linker) n2.get(0)).getNstd().size());
+
+		Pager p = new Pager();
+		List<Linker> linkers = s.findQuery(l1.getType(), "*", p);
+		assertEquals(1, linkers.size());
+		assertEquals(1, p.getCount());
+
+		System.setProperty("para.read_from_index", "false");
+		p = new Pager();
+		linkers = s.findQuery(l1.getType(), "*", p);
+		assertEquals(1, linkers.size());
+		assertEquals(1, p.getCount());
+
+		System.setProperty("para.read_from_index", "true");
 	}
 
 	@Test
