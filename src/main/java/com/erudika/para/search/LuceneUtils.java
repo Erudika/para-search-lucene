@@ -163,7 +163,7 @@ public final class LuceneUtils {
 
 		DOC_ID_FIELD = new FieldType();
 		DOC_ID_FIELD.setStored(true);
-		DOC_ID_FIELD.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+		DOC_ID_FIELD.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
 		DOC_ID_FIELD.setTokenized(false);
 
 		DEFAULT_FIELD = new FieldType();
