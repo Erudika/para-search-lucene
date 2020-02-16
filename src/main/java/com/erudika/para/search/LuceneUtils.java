@@ -740,11 +740,13 @@ public final class LuceneUtils {
 			boolean readFromIndex = Config.getConfigBoolean("read_from_index", false);
 			for (Document hit : hits) {
 				P result = readObjectFromIndex(hit);
-				if (keysAndSources.containsKey(result.getId())) {
-					pager.setCount(pager.getCount() - 1); // substract duplicates due to nested objects (nstd)
-				} else {
-					results.add(result);
-					keysAndSources.put(result.getId(), result);
+				if (result != null) {
+					if (keysAndSources.containsKey(result.getId())) {
+						pager.setCount(pager.getCount() - 1); // substract duplicates due to nested objects (nstd)
+					} else {
+						results.add(result);
+						keysAndSources.put(result.getId(), result);
+					}
 				}
 			}
 			if (!readFromIndex) {
