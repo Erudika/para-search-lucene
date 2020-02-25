@@ -48,38 +48,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CharArraySet;
-import org.apache.lucene.analysis.ar.ArabicAnalyzer;
-import org.apache.lucene.analysis.bg.BulgarianAnalyzer;
-import org.apache.lucene.analysis.br.BrazilianAnalyzer;
-import org.apache.lucene.analysis.ca.CatalanAnalyzer;
-import org.apache.lucene.analysis.cz.CzechAnalyzer;
-import org.apache.lucene.analysis.da.DanishAnalyzer;
-import org.apache.lucene.analysis.de.GermanAnalyzer;
-import org.apache.lucene.analysis.el.GreekAnalyzer;
-import org.apache.lucene.analysis.en.EnglishAnalyzer;
-import org.apache.lucene.analysis.es.SpanishAnalyzer;
-import org.apache.lucene.analysis.eu.BasqueAnalyzer;
-import org.apache.lucene.analysis.fa.PersianAnalyzer;
-import org.apache.lucene.analysis.fi.FinnishAnalyzer;
-import org.apache.lucene.analysis.fr.FrenchAnalyzer;
-import org.apache.lucene.analysis.gl.GalicianAnalyzer;
-import org.apache.lucene.analysis.hi.HindiAnalyzer;
-import org.apache.lucene.analysis.hu.HungarianAnalyzer;
-import org.apache.lucene.analysis.hy.ArmenianAnalyzer;
-import org.apache.lucene.analysis.id.IndonesianAnalyzer;
-import org.apache.lucene.analysis.it.ItalianAnalyzer;
-import org.apache.lucene.analysis.nl.DutchAnalyzer;
-import org.apache.lucene.analysis.no.NorwegianAnalyzer;
-import org.apache.lucene.analysis.pt.PortugueseAnalyzer;
-import org.apache.lucene.analysis.ro.RomanianAnalyzer;
-import org.apache.lucene.analysis.ru.RussianAnalyzer;
+import org.apache.lucene.analysis.core.KeywordAnalyzer;
+import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.analysis.sv.SwedishAnalyzer;
-import org.apache.lucene.analysis.tr.TurkishAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -139,7 +114,7 @@ public final class LuceneUtils {
 	private static final FieldType DEFAULT_FIELD;
 	private static final FieldType DEFAULT_NOT_ANALYZED_FIELD;
 	private static final Set<String> NOT_ANALYZED_FIELDS;
-	private static final CharArraySet STOPWORDS;
+	private static final Analyzer QUERY_STRING_ANALYZER;
 	private static final String[] IGNORED_FIELDS;
 
 	private static final Map<String, IndexWriter> WRITERS = new ConcurrentHashMap<String, IndexWriter>();
@@ -188,34 +163,7 @@ public final class LuceneUtils {
 		DEFAULT_NOT_ANALYZED_FIELD.setOmitNorms(false);
 		DEFAULT_NOT_ANALYZED_FIELD.setDocValuesType(DocValuesType.NONE);
 
-		STOPWORDS = CharArraySet.copy(EnglishAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(ArabicAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(ArmenianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(BasqueAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(BrazilianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(BulgarianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(CatalanAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(CzechAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(DanishAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(DutchAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(FinnishAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(FrenchAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(GalicianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(GermanAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(GreekAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(HindiAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(HungarianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(IndonesianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(ItalianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(NorwegianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(PersianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(PortugueseAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(RomanianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(RussianAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(SpanishAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(SwedishAnalyzer.getDefaultStopSet());
-		STOPWORDS.addAll(TurkishAnalyzer.getDefaultStopSet());
-		ANALYZER = new StandardAnalyzer(STOPWORDS);
+		ANALYZER = new StandardAnalyzer();
 
 		NOT_ANALYZED_FIELDS = new HashSet<>();
 		NOT_ANALYZED_FIELDS.add("nstd");
@@ -238,6 +186,10 @@ public final class LuceneUtils {
 		NOT_ANALYZED_FIELDS.add("identifier");
 		NOT_ANALYZED_FIELDS.add("nstdparentid");
 		NOT_ANALYZED_FIELDS.add("token");
+
+		KeywordAnalyzer ka = new KeywordAnalyzer();
+		QUERY_STRING_ANALYZER = new PerFieldAnalyzerWrapper(ANALYZER,
+				NOT_ANALYZED_FIELDS.stream().collect(Collectors.toMap(field -> field, f -> ka)));
 
 		// these fields are not indexed
 		IGNORED_FIELDS = new String[] {
@@ -1007,7 +959,7 @@ public final class LuceneUtils {
 		if (StringUtils.isBlank(query)) {
 			query = "*";
 		}
-		MultiFieldQueryParser parser = new MultiFieldQueryParser(fields.toArray(new String[0]), new StandardAnalyzer());
+		MultiFieldQueryParser parser = new MultiFieldQueryParser(fields.toArray(new String[0]), QUERY_STRING_ANALYZER);
 		parser.setAllowLeadingWildcard(false);
 		//parser.setLowercaseExpandedTerms(false); // DEPRECATED in Lucene 7.x
 		query = query.trim();
