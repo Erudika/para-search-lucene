@@ -17,7 +17,6 @@
  */
 package com.erudika.para.search;
 
-import com.erudika.para.AppDeletedListener;
 import com.erudika.para.core.App;
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.Tag;
@@ -65,6 +64,14 @@ public class LuceneSearch implements Search {
 
 	private DAO dao;
 
+	static {
+		if (Config.isSearchEnabled()) {
+			// NOTE: index creation is automatic - we don't have to add a new AppCreatedListener here
+			// set up automatic index deletion
+			App.addAppDeletedListener((App app) -> deleteIndexInternal(app));
+		}
+	}
+
 	/**
 	 * No-args constructor.
 	 */
@@ -79,17 +86,6 @@ public class LuceneSearch implements Search {
 	@Inject
 	public LuceneSearch(DAO dao) {
 		this.dao = dao;
-		if (Config.isSearchEnabled()) {
-			// NOTE: index creation is automatic - we don't have to add a new AppCreatedListener here
-			// set up automatic index deletion
-			App.addAppDeletedListener(new AppDeletedListener() {
-				public void onAppDeleted(App app) {
-					if (app != null) {
-						LuceneUtils.deleteIndex(app.getAppIdentifier());
-					}
-				}
-			});
-		}
 	}
 
 	@Override
@@ -355,6 +351,28 @@ public class LuceneSearch implements Search {
 	@Override
 	public boolean isValidQueryString(String queryString) {
 		return LuceneUtils.isValidQueryString(queryString);
+	}
+
+	/**
+	 * create index.
+	 * @param app app
+	 */
+	public void createIndex(App app) {
+		// noop - indices are created automatically
+	}
+
+	/**
+	 * delete index.
+	 * @param app app
+	 */
+	public void deleteIndex(App app) {
+		deleteIndexInternal(app);
+	}
+
+	private static void deleteIndexInternal(App app) {
+		if (app != null) {
+			LuceneUtils.deleteIndex(app.getAppIdentifier());
+		}
 	}
 
 	//////////////////////////////////////////////////////////////
