@@ -55,7 +55,7 @@
 		<skipTests>false</skipTests>
 		<skipITs>${skipTests}</skipITs>
 		<skipUTs>${skipTests}</skipUTs>
-		<luceneVer>8.6.3</luceneVer>
+		<luceneVer>8.7.0</luceneVer>
 	</properties>
 
 	<dependencies>
