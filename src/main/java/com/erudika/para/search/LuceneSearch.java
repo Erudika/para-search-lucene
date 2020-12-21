@@ -353,18 +353,12 @@ public class LuceneSearch implements Search {
 		return LuceneUtils.isValidQueryString(queryString);
 	}
 
-	/**
-	 * create index.
-	 * @param app app
-	 */
+	@Override
 	public void createIndex(App app) {
 		// noop - indices are created automatically
 	}
 
-	/**
-	 * delete index.
-	 * @param app app
-	 */
+	@Override
 	public void deleteIndex(App app) {
 		deleteIndexInternal(app);
 	}
