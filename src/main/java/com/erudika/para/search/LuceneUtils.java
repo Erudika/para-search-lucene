@@ -116,6 +116,7 @@ public final class LuceneUtils {
 	private static final Set<String> NOT_ANALYZED_FIELDS;
 	private static final Analyzer QUERY_STRING_ANALYZER;
 	private static final String[] IGNORED_FIELDS;
+	private static final int FIELD_LIMIT = 16383; // 32766 / 2; = 2 bytes per char, max field length must be <= 32766
 
 	private static final Map<String, IndexWriter> WRITERS = new ConcurrentHashMap<String, IndexWriter>();
 //	private static S3Directory s3Directory;
@@ -219,7 +220,12 @@ public final class LuceneUtils {
 			if (iwriter != null) {
 				for (Document doc : docs) {
 					if (doc.get(Config._ID) != null) {
-						iwriter.updateDocument(new Term(Config._ID, doc.get(Config._ID)), doc);
+						try {
+							iwriter.updateDocument(new Term(Config._ID, doc.get(Config._ID)), doc);
+						} catch (Exception e) {
+							logger.error("Failed to index document " + doc.get(Config._TYPE) + ":" + doc.get(Config._ID)
+									+ " from batch of " + docs.size() + " for app '" + appid + "'", e);
+						}
 					}
 				}
 				iwriter.commit();
@@ -252,7 +258,7 @@ public final class LuceneUtils {
 				iwriter.commit();
 			}
 		} catch (Exception ex) {
-			logger.error(null, ex);
+			logger.error("Failed to unindex " + ids.size() + " documents for app '" + appid + "'", ex);
 		}
 	}
 
@@ -273,7 +279,7 @@ public final class LuceneUtils {
 				iwriter.commit();
 			}
 		} catch (Exception ex) {
-			logger.error(null, ex);
+			logger.error("Failed to unindex documents matching '" + query.toString() + "' for app '" + appid + "'", ex);
 		}
 	}
 
@@ -290,7 +296,7 @@ public final class LuceneUtils {
 				iwriter.commit();
 			}
 		} catch (Exception ex) {
-			logger.error(null, ex);
+			logger.error("Failed to delete index for app '" + appid + "'", ex);
 		}
 	}
 
@@ -396,8 +402,7 @@ public final class LuceneUtils {
 					}
 				}
 				if (sb.length() > 0) {
-					String txt = sb.length() > 32766 ? StringUtils.truncate(sb.toString(), 32766) : sb.toString();
-					doc.add(new SortedDocValuesField(prefix, new BytesRef(txt)));
+					addSortedDocValuesField(doc, prefix, sb.toString());
 				}
 				break;
 			case NULL:
@@ -417,12 +422,24 @@ public final class LuceneUtils {
 								doc.add(new SortedNumericDocValuesField(prefix, val.asLong()));
 						}
 					} else {
-						doc.add(new SortedDocValuesField(prefix, new BytesRef(txt.length() > 32766 ?
-								StringUtils.truncate(txt, 32766) : txt)));
+						addSortedDocValuesField(doc, prefix, txt);
 					}
 				}
 				doc.add(f);
 				break;
+		}
+	}
+
+	private static void addSortedDocValuesField(Document doc, String prefix, String txt) {
+		if (txt.length() > FIELD_LIMIT) {
+			int i = 0;
+			for (int start = 0; start < txt.length(); start += FIELD_LIMIT) {
+				String s = txt.substring(start, Math.min(txt.length(), start + FIELD_LIMIT));
+				doc.add(new SortedDocValuesField(prefix + (start > 0 ? String.valueOf(++i) : ""),
+						new BytesRef(s.getBytes())));
+			}
+		} else {
+			doc.add(new SortedDocValuesField(prefix, new BytesRef(txt.getBytes())));
 		}
 	}
 
