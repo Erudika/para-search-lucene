@@ -234,7 +234,7 @@ public class LuceneSearch implements Search {
 		}
 		q.setMinDocFreq(1);
 		q.setMinTermFrequency(1);
-		q.setPercentTermsToMatch(0.4f);
+		q.setPercentTermsToMatch(0.7f);
 
 		if (!StringUtils.isBlank(filterKey)) {
 			query = new BooleanQuery.Builder().
