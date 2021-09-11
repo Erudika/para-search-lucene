@@ -549,8 +549,9 @@ public final class LuceneUtils {
 		if (keysAndSources == null || keysAndSources.isEmpty()) {
 			return Collections.emptyList();
 		}
+		boolean cleanupIndex = Config.getConfigBoolean("sync_index_with_db", true);
 		ArrayList<P> results = new ArrayList<>(keysAndSources.size());
-		ArrayList<String> nullz = new ArrayList<>(results.size());
+		ArrayList<String> objectsMissingFromDB = new ArrayList<>(results.size());
 		Map<String, P> fromDB = dao.readAll(appid, new ArrayList<>(keysAndSources.keySet()), true);
 		for (Map.Entry<String, P> entry : keysAndSources.entrySet()) {
 			String key = entry.getKey();
@@ -559,7 +560,7 @@ public final class LuceneUtils {
 				pobj = entry.getValue();
 				// object is still in index but not in DB
 				if (pobj != null && appid.equals(pobj.getAppid()) && pobj.getStored()) {
-					nullz.add(key);
+					objectsMissingFromDB.add(key);
 				}
 			}
 			if (pobj != null) {
@@ -567,10 +568,16 @@ public final class LuceneUtils {
 			}
 		}
 
-		if (!nullz.isEmpty()) {
-			logger.warn("Found {} objects that are still indexed but deleted from the database: {}. "
-					+ "Sometimes this happens if you do a search right after a delete operation.",
-					nullz.size(), nullz);
+		if (!objectsMissingFromDB.isEmpty()) {
+			if (cleanupIndex) {
+				unindexDocuments(appid, objectsMissingFromDB);
+				logger.debug("Removed {} objects from index in app '{}' that were not found in database: {}.",
+						objectsMissingFromDB.size(), appid, objectsMissingFromDB);
+			} else {
+				logger.warn("Found {} objects that are still indexed but deleted from the database: {}. "
+						+ "Sometimes this happens if you do a search right after a delete operation.",
+						objectsMissingFromDB.size(), objectsMissingFromDB);
+			}
 		}
 		return results;
 	}
