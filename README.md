@@ -3,7 +3,6 @@
 
 > ### Lucene plugin for Para
 
-[![Build Status](https://travis-ci.org/Erudika/para-search-lucene.svg?branch=master)](https://travis-ci.org/Erudika/para-search-lucene)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.erudika/para-search-lucene/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.erudika/para-search-lucene)
 [![Join the chat at https://gitter.im/Erudika/para](https://badges.gitter.im/Erudika/para.svg)](https://gitter.im/Erudika/para?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
