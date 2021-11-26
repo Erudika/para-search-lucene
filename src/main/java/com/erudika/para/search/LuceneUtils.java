@@ -790,7 +790,7 @@ public final class LuceneUtils {
 		} catch (Exception e) {
 			Throwable cause = e.getCause();
 			String msg = cause != null ? cause.getMessage() : e.getMessage();
-			logger.warn("No search results for type '{}' in app '{}': {}.", type, appid, msg);
+			logger.debug("No search results for type '{}' in app '{}': {}.", type, appid, msg);
 		}
 		return new Document[0];
 	}
