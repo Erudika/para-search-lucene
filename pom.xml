@@ -50,19 +50,17 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
 		<skipTests>false</skipTests>
 		<skipITs>${skipTests}</skipITs>
 		<skipUTs>${skipTests}</skipUTs>
-		<luceneVer>8.11.0</luceneVer>
+		<luceneVer>9.0.0</luceneVer>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.erudika</groupId>
 			<artifactId>para-core</artifactId>
-			<version>1.42.0</version>
+			<version>1.42.1</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -85,7 +83,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.apache.lucene</groupId>
-			<artifactId>lucene-analyzers-common</artifactId>
+			<artifactId>lucene-analysis-common</artifactId>
 			<version>${luceneVer}</version>
 		</dependency>
 		<dependency>
@@ -151,6 +149,15 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version>
+				<configuration>
+					<release>11</release>
+				</configuration>
 			</plugin>
 
 			<plugin>
