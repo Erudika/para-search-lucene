@@ -15,7 +15,7 @@
  *
  * For issues and patches go to: https://github.com/erudika
  */
-package com.erudika.para.search;
+package com.erudika.para.server.search;
 
 import com.erudika.para.DestroyListener;
 import com.erudika.para.Para;

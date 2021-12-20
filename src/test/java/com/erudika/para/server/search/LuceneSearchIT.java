@@ -15,11 +15,12 @@
  *
  * For issues and patches go to: https://github.com/erudika
  */
-package com.erudika.para.search;
+package com.erudika.para.server.search;
 
+import com.erudika.para.server.search.LuceneSearch;
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.persistence.DAO;
-import static com.erudika.para.search.SearchTest.u;
+import static com.erudika.para.server.search.SearchTest.u;
 import com.erudika.para.utils.Config;
 import com.erudika.para.utils.Pager;
 import java.util.HashMap;

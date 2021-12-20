@@ -15,7 +15,7 @@
  *
  * For issues and patches go to: https://github.com/erudika
  */
-package com.erudika.para.search;
+package com.erudika.para.server.search;
 
 import com.erudika.para.core.App;
 import com.erudika.para.core.ParaObject;
@@ -23,12 +23,13 @@ import com.erudika.para.core.Tag;
 import com.erudika.para.core.utils.CoreUtils;
 import com.erudika.para.core.utils.ParaObjectUtils;
 import com.erudika.para.persistence.DAO;
-import static com.erudika.para.search.LuceneUtils.count;
-import static com.erudika.para.search.LuceneUtils.getTermsQuery;
-import static com.erudika.para.search.LuceneUtils.indexDocuments;
-import static com.erudika.para.search.LuceneUtils.paraObjectToDocument;
-import static com.erudika.para.search.LuceneUtils.searchGeoQuery;
-import static com.erudika.para.search.LuceneUtils.unindexDocuments;
+import com.erudika.para.search.Search;
+import static com.erudika.para.server.search.LuceneUtils.count;
+import static com.erudika.para.server.search.LuceneUtils.getTermsQuery;
+import static com.erudika.para.server.search.LuceneUtils.indexDocuments;
+import static com.erudika.para.server.search.LuceneUtils.paraObjectToDocument;
+import static com.erudika.para.server.search.LuceneUtils.searchGeoQuery;
+import static com.erudika.para.server.search.LuceneUtils.unindexDocuments;
 import com.erudika.para.utils.Config;
 import com.erudika.para.utils.Pager;
 import com.erudika.para.utils.Utils;
@@ -49,7 +50,7 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.WildcardQuery;
-import static com.erudika.para.search.LuceneUtils.searchQuery;
+import static com.erudika.para.server.search.LuceneUtils.searchQuery;
 import static org.apache.lucene.document.LatLonPoint.newDistanceQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.TermInSetQuery;
