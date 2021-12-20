@@ -17,17 +17,17 @@
  */
 package com.erudika.para.server.search;
 
-import com.erudika.para.DestroyListener;
-import com.erudika.para.Para;
+import com.erudika.para.core.listeners.DestroyListener;
+import com.erudika.para.core.utils.Para;
 import com.erudika.para.core.Address;
 import com.erudika.para.core.App;
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.utils.ParaObjectUtils;
-import com.erudika.para.persistence.DAO;
-import com.erudika.para.utils.Config;
-import static com.erudika.para.utils.Config.DEFAULT_LIMIT;
-import com.erudika.para.utils.Pager;
-import com.erudika.para.utils.Utils;
+import com.erudika.para.core.persistence.DAO;
+import com.erudika.para.core.utils.Config;
+import static com.erudika.para.core.utils.Config.DEFAULT_LIMIT;
+import com.erudika.para.core.utils.Pager;
+import com.erudika.para.core.utils.Utils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;

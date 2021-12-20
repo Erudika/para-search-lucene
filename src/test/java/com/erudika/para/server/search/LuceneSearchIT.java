@@ -17,12 +17,11 @@
  */
 package com.erudika.para.server.search;
 
-import com.erudika.para.server.search.LuceneSearch;
 import com.erudika.para.core.ParaObject;
-import com.erudika.para.persistence.DAO;
+import com.erudika.para.core.persistence.DAO;
 import static com.erudika.para.server.search.SearchTest.u;
-import com.erudika.para.utils.Config;
-import com.erudika.para.utils.Pager;
+import com.erudika.para.core.utils.Config;
+import com.erudika.para.core.utils.Pager;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
