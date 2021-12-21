@@ -49,6 +49,8 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.WildcardQuery;
 import static com.erudika.para.server.search.LuceneUtils.searchQuery;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import static org.apache.lucene.document.LatLonPoint.newDistanceQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.TermInSetQuery;
@@ -58,6 +60,7 @@ import org.apache.lucene.util.BytesRef;
  * An implementation of the {@link Search} interface using Lucene core.
  * @author Alex Bogdanovski [alex@erudika.com]
  */
+@Singleton
 public class LuceneSearch implements Search {
 
 	private DAO dao;
@@ -81,6 +84,7 @@ public class LuceneSearch implements Search {
 	 * Default constructor.
 	 * @param dao an instance of the persistence class
 	 */
+	@Inject
 	public LuceneSearch(DAO dao) {
 		this.dao = dao;
 	}
