@@ -37,8 +37,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import javax.inject.Inject;
-import javax.inject.Singleton;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
@@ -60,7 +58,6 @@ import org.apache.lucene.util.BytesRef;
  * An implementation of the {@link Search} interface using Lucene core.
  * @author Alex Bogdanovski [alex@erudika.com]
  */
-@Singleton
 public class LuceneSearch implements Search {
 
 	private DAO dao;
@@ -84,7 +81,6 @@ public class LuceneSearch implements Search {
 	 * Default constructor.
 	 * @param dao an instance of the persistence class
 	 */
-	@Inject
 	public LuceneSearch(DAO dao) {
 		this.dao = dao;
 	}
