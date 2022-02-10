@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2021 Erudika. http://erudika.com
+ * Copyright 2013-2022 Erudika. http://erudika.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import static com.erudika.para.server.search.LuceneUtils.searchGeoQuery;
 import static com.erudika.para.server.search.LuceneUtils.unindexDocuments;
 import com.erudika.para.core.utils.Config;
 import com.erudika.para.core.utils.Pager;
+import com.erudika.para.core.utils.Para;
 import com.erudika.para.core.utils.Utils;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -66,7 +67,7 @@ public class LuceneSearch implements Search {
 	private DAO dao;
 
 	static {
-		if (Config.isSearchEnabled()) {
+		if (Para.getConfig().isSearchEnabled()) {
 			// NOTE: index creation is automatic - we don't have to add a new AppCreatedListener here
 			// set up automatic index deletion
 			App.addAppDeletedListener((App app) -> deleteIndexInternal(app));
@@ -374,102 +375,102 @@ public class LuceneSearch implements Search {
 
 	@Override
 	public void index(ParaObject so) {
-		index(Config.getRootAppIdentifier(), so);
+		index(Para.getConfig().getRootAppIdentifier(), so);
 	}
 
 	@Override
 	public void unindex(ParaObject so) {
-		unindex(Config.getRootAppIdentifier(), so);
+		unindex(Para.getConfig().getRootAppIdentifier(), so);
 	}
 
 	@Override
 	public <P extends ParaObject> void indexAll(List<P> objects) {
-		indexAll(Config.getRootAppIdentifier(), objects);
+		indexAll(Para.getConfig().getRootAppIdentifier(), objects);
 	}
 
 	@Override
 	public <P extends ParaObject> void unindexAll(List<P> objects) {
-		unindexAll(Config.getRootAppIdentifier(), objects);
+		unindexAll(Para.getConfig().getRootAppIdentifier(), objects);
 	}
 
 	@Override
 	public void unindexAll(Map<String, ?> terms, boolean matchAll) {
-		unindexAll(Config.getRootAppIdentifier(), terms, matchAll);
+		unindexAll(Para.getConfig().getRootAppIdentifier(), terms, matchAll);
 	}
 
 	@Override
 	public <P extends ParaObject> P findById(String id) {
-		return findById(Config.getRootAppIdentifier(), id);
+		return findById(Para.getConfig().getRootAppIdentifier(), id);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findByIds(List<String> ids) {
-		return findByIds(Config.getRootAppIdentifier(), ids);
+		return findByIds(Para.getConfig().getRootAppIdentifier(), ids);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findNearby(String type,
 			String query, int radius, double lat, double lng, Pager... pager) {
-		return findNearby(Config.getRootAppIdentifier(), type, query, radius, lat, lng, pager);
+		return findNearby(Para.getConfig().getRootAppIdentifier(), type, query, radius, lat, lng, pager);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findPrefix(String type, String field, String prefix, Pager... pager) {
-		return findPrefix(Config.getRootAppIdentifier(), type, field, prefix, pager);
+		return findPrefix(Para.getConfig().getRootAppIdentifier(), type, field, prefix, pager);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findQuery(String type, String query, Pager... pager) {
-		return findQuery(Config.getRootAppIdentifier(), type, query, pager);
+		return findQuery(Para.getConfig().getRootAppIdentifier(), type, query, pager);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findNestedQuery(String type, String field, String query, Pager... pager) {
-		return findNestedQuery(Config.getRootAppIdentifier(), type, field, query, pager);
+		return findNestedQuery(Para.getConfig().getRootAppIdentifier(), type, field, query, pager);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findSimilar(String type, String filterKey, String[] fields,
 			String liketext, Pager... pager) {
-		return findSimilar(Config.getRootAppIdentifier(), type, filterKey, fields, liketext, pager);
+		return findSimilar(Para.getConfig().getRootAppIdentifier(), type, filterKey, fields, liketext, pager);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findTagged(String type, String[] tags, Pager... pager) {
-		return findTagged(Config.getRootAppIdentifier(), type, tags, pager);
+		return findTagged(Para.getConfig().getRootAppIdentifier(), type, tags, pager);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findTags(String keyword, Pager... pager) {
-		return findTags(Config.getRootAppIdentifier(), keyword, pager);
+		return findTags(Para.getConfig().getRootAppIdentifier(), keyword, pager);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findTermInList(String type, String field,
 			List<?> terms, Pager... pager) {
-		return findTermInList(Config.getRootAppIdentifier(), type, field, terms, pager);
+		return findTermInList(Para.getConfig().getRootAppIdentifier(), type, field, terms, pager);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findTerms(String type, Map<String, ?> terms,
 			boolean mustMatchBoth, Pager... pager) {
-		return findTerms(Config.getRootAppIdentifier(), type, terms, mustMatchBoth, pager);
+		return findTerms(Para.getConfig().getRootAppIdentifier(), type, terms, mustMatchBoth, pager);
 	}
 
 	@Override
 	public <P extends ParaObject> List<P> findWildcard(String type, String field, String wildcard,
 			Pager... pager) {
-		return findWildcard(Config.getRootAppIdentifier(), type, field, wildcard, pager);
+		return findWildcard(Para.getConfig().getRootAppIdentifier(), type, field, wildcard, pager);
 	}
 
 	@Override
 	public Long getCount(String type) {
-		return getCount(Config.getRootAppIdentifier(), type);
+		return getCount(Para.getConfig().getRootAppIdentifier(), type);
 	}
 
 	@Override
 	public Long getCount(String type, Map<String, ?> terms) {
-		return getCount(Config.getRootAppIdentifier(), type, terms);
+		return getCount(Para.getConfig().getRootAppIdentifier(), type, terms);
 	}
 
 }

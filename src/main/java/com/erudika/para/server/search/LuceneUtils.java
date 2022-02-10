@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2021 Erudika. http://erudika.com
+ * Copyright 2013-2022 Erudika. http://erudika.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -318,7 +318,7 @@ public final class LuceneUtils {
 			deleteIndex(indexName);
 			logger.debug("rebuildIndex(): {}", indexName);
 			Pager p = getPager(pager);
-			int batchSize = Config.getConfigInt("reindex_batch_size", p.getLimit());
+			int batchSize = Para.getConfig().getConfigInt("reindex_batch_size", p.getLimit());
 			long reindexedCount = 0;
 
 			List<ParaObject> list;
@@ -549,7 +549,7 @@ public final class LuceneUtils {
 		if (keysAndSources == null || keysAndSources.isEmpty()) {
 			return Collections.emptyList();
 		}
-		boolean cleanupIndex = Config.getConfigBoolean("sync_index_with_db", true);
+		boolean cleanupIndex = Para.getConfig().getConfigBoolean("sync_index_with_db", true);
 		ArrayList<P> results = new ArrayList<>(keysAndSources.size());
 		ArrayList<String> objectsMissingFromDB = new ArrayList<>(results.size());
 		Map<String, P> fromDB = dao.readAll(appid, new ArrayList<>(keysAndSources.keySet()), true);
@@ -713,7 +713,7 @@ public final class LuceneUtils {
 		ArrayList<P> results = new ArrayList<>(hits.length);
 		LinkedHashMap<String, P> keysAndSources = new LinkedHashMap<>(hits.length);
 		try {
-			boolean readFromIndex = Config.getConfigBoolean("read_from_index", false);
+			boolean readFromIndex = Para.getConfig().getConfigBoolean("read_from_index", false);
 			for (Document hit : hits) {
 				P result = readObjectFromIndex(hit);
 				if (result != null) {
@@ -768,7 +768,7 @@ public final class LuceneUtils {
 					topDocs = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
 				}
 			} else {
-				int start = (pageNum < 1 || pageNum > Config.MAX_PAGES) ? 0 : (pageNum - 1) * maxPerPage;
+				int start = (pageNum < 1 || pageNum > Para.getConfig().maxPages()) ? 0 : (pageNum - 1) * maxPerPage;
 				Sort sort = new Sort(getSortFieldForQuery(ireader, type, pager));
 				TopFieldCollector collector = TopFieldCollector.create(sort, DEFAULT_LIMIT, DEFAULT_LIMIT);
 				isearcher.search(query, collector);
@@ -882,15 +882,15 @@ public final class LuceneUtils {
 	}
 
 	private static Directory getDirectory(String appid) throws IOException {
-//		if (Config.getConfigParam("lucene.storage", "").equalsIgnoreCase("s3")) {
+//		if (Para.getConfig().getConfigParam("lucene.storage", "").equalsIgnoreCase("s3")) {
 //			if (s3Directory == null) {
-//				s3Directory = new S3Directory(Config.getConfigParam("lucene.s3_prefix", "") + getIndexName(appid));
+//				s3Directory = new S3Directory(Para.getConfig().getConfigParam("lucene.s3_prefix", "") + getIndexName(appid));
 //				s3Directory.create();
 //			}
 //			return s3Directory;
 //		} else {
 			return FSDirectory.open(FileSystems.getDefault().
-					getPath(Config.getConfigParam("lucene.dir", Paths.get(".").toAbsolutePath().normalize().toString()),
+					getPath(Para.getConfig().getConfigParam("lucene.dir", Paths.get(".").toAbsolutePath().normalize().toString()),
 							"data", getIndexName(appid)));
 //		}
 	}
