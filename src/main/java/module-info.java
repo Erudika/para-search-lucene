@@ -26,8 +26,9 @@ module com.erudika.para.server.search.lucene {
 	requires org.apache.lucene.analysis.common;
 	requires org.apache.lucene.core;
 	requires org.apache.lucene.queries;
+//	requires org.apache.lucene.spatial3d;
 	requires org.apache.lucene.queryparser;
-	requires org.apache.lucene.spatial_extras;
+//	requires org.apache.lucene.spatial_extras;
 	exports com.erudika.para.server.search;
 	provides com.erudika.para.core.search.Search with com.erudika.para.server.search.LuceneSearch;
 }
