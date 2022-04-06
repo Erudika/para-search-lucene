@@ -32,7 +32,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.file.FileSystems;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -318,7 +317,7 @@ public final class LuceneUtils {
 			deleteIndex(indexName);
 			logger.debug("rebuildIndex(): {}", indexName);
 			Pager p = getPager(pager);
-			int batchSize = Para.getConfig().getConfigInt("reindex_batch_size", p.getLimit());
+			int batchSize = Para.getConfig().reindexBatchSize(p.getLimit());
 			long reindexedCount = 0;
 
 			List<ParaObject> list;
@@ -549,7 +548,7 @@ public final class LuceneUtils {
 		if (keysAndSources == null || keysAndSources.isEmpty()) {
 			return Collections.emptyList();
 		}
-		boolean cleanupIndex = Para.getConfig().getConfigBoolean("sync_index_with_db", true);
+		boolean cleanupIndex = Para.getConfig().syncIndexWithDatabaseEnabled();
 		ArrayList<P> results = new ArrayList<>(keysAndSources.size());
 		ArrayList<String> objectsMissingFromDB = new ArrayList<>(results.size());
 		Map<String, P> fromDB = dao.readAll(appid, new ArrayList<>(keysAndSources.keySet()), true);
@@ -713,7 +712,7 @@ public final class LuceneUtils {
 		ArrayList<P> results = new ArrayList<>(hits.length);
 		LinkedHashMap<String, P> keysAndSources = new LinkedHashMap<>(hits.length);
 		try {
-			boolean readFromIndex = Para.getConfig().getConfigBoolean("read_from_index", false);
+			boolean readFromIndex = Para.getConfig().readFromIndexEnabled();
 			for (Document hit : hits) {
 				P result = readObjectFromIndex(hit);
 				if (result != null) {
@@ -882,17 +881,8 @@ public final class LuceneUtils {
 	}
 
 	private static Directory getDirectory(String appid) throws IOException {
-//		if (Para.getConfig().getConfigParam("lucene.storage", "").equalsIgnoreCase("s3")) {
-//			if (s3Directory == null) {
-//				s3Directory = new S3Directory(Para.getConfig().getConfigParam("lucene.s3_prefix", "") + getIndexName(appid));
-//				s3Directory.create();
-//			}
-//			return s3Directory;
-//		} else {
-			return FSDirectory.open(FileSystems.getDefault().
-					getPath(Para.getConfig().getConfigParam("lucene.dir", Paths.get(".").toAbsolutePath().normalize().toString()),
-							"data", getIndexName(appid)));
-//		}
+		return FSDirectory.open(FileSystems.getDefault().
+				getPath(Para.getConfig().luceneDataFolder(), "data", getIndexName(appid)));
 	}
 
 	private static void closeIndexReader(DirectoryReader ireader) {
