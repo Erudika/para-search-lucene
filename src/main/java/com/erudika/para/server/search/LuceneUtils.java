@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -115,7 +116,7 @@ public final class LuceneUtils {
 	private static final Set<String> NOT_ANALYZED_FIELDS;
 	private static final Analyzer QUERY_STRING_ANALYZER;
 	private static final String[] IGNORED_FIELDS;
-	private static final int FIELD_LIMIT = 16383; // 32766 / 2; = 2 bytes per char, max field length must be <= 32766
+	private static final int FIELD_LIMIT = 32766; // Lucene limitation for sorted doc values - max field length must be <= 32766 bytes
 
 	private static final Map<String, IndexWriter> WRITERS = new ConcurrentHashMap<String, IndexWriter>();
 //	private static S3Directory s3Directory;
@@ -430,12 +431,14 @@ public final class LuceneUtils {
 	}
 
 	private static void addSortedDocValuesField(Document doc, String prefix, String txt) {
-		if (txt.length() > FIELD_LIMIT) {
+		if (txt.getBytes().length > FIELD_LIMIT) {
 			int i = 0;
-			for (int start = 0; start < txt.length(); start += FIELD_LIMIT) {
-				String s = txt.substring(start, Math.min(txt.length(), start + FIELD_LIMIT));
+			int len = txt.getBytes().length;
+			for (int start = 0; start < len; start += FIELD_LIMIT) {
+//				String s = new String();
+//				String s = txt.substring(start, Math.min(txt.length(), start + FIELD_LIMIT));
 				doc.add(new SortedDocValuesField(prefix + (start > 0 ? String.valueOf(++i) : ""),
-						new BytesRef(s.getBytes())));
+						new BytesRef(Arrays.copyOfRange(txt.getBytes(), start, Math.min(len, start + FIELD_LIMIT)))));
 			}
 		} else {
 			doc.add(new SortedDocValuesField(prefix, new BytesRef(txt.getBytes())));
@@ -860,6 +863,7 @@ public final class LuceneUtils {
 	}
 
 	private static IndexWriter getIndexWriter(String appid) {
+		appid = StringUtils.trimToEmpty(appid); // remove leading empty space for shared apps
 		synchronized (WRITERS) {
 			if (!WRITERS.containsKey(appid)) {
 				try {
@@ -1019,7 +1023,7 @@ public final class LuceneUtils {
 	 * @return the correct index name
 	 */
 	static String getIndexName(String appid) {
-		return appid + "-lucene";
+		return StringUtils.trim(appid) + "-lucene"; // remove leading empty space for shared apps
 	}
 
 }
