@@ -53,14 +53,14 @@
 		<skipTests>false</skipTests>
 		<skipITs>${skipTests}</skipITs>
 		<skipUTs>${skipTests}</skipUTs>
-		<luceneVer>9.7.0</luceneVer>
+		<luceneVer>9.8.0</luceneVer>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.erudika</groupId>
 			<artifactId>para-core</artifactId>
-			<version>1.48.3-SNAPSHOT</version>
+			<version>1.49.1-SNAPSHOT</version>
 			<scope>provided</scope>
 		</dependency>
 
