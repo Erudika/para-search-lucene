@@ -60,7 +60,7 @@
 		<dependency>
 			<groupId>com.erudika</groupId>
 			<artifactId>para-core</artifactId>
-			<version>1.50.0-SNAPSHOT</version>
+			<version>1.50.0</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -107,25 +107,25 @@
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-core</artifactId>
-			<version>2.23.4</version>
+			<version>5.11.0</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.13.1</version>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-api</artifactId>
+			<version>5.10.2</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>javax.xml.bind</groupId>
-			<artifactId>jaxb-api</artifactId>
-			<version>2.4.0-b180830.0359</version>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<version>5.10.2</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
-			<version>1.3.0</version>
+			<version>1.3.1</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -135,7 +135,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.5.2</version>
+				<version>3.5.3</version>
 				<executions>
 					<execution>
 						<phase>package</phase>
@@ -144,8 +144,8 @@
 						</goals>
 						<configuration>
 							<minimizeJar>false</minimizeJar>
-							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<shadedArtifactAttached>true</shadedArtifactAttached>
+							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<transformers>
 								<transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
 							</transformers>
@@ -176,7 +176,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>2.22.2</version>
+				<version>3.2.5</version>
 				<executions>
 					<execution>
 						<goals>
@@ -200,7 +200,7 @@
 					<dependency>
 						<groupId>com.puppycrawl.tools</groupId>
 						<artifactId>checkstyle</artifactId>
-						<version>9.2</version>
+						<version>10.16.0</version>
 					</dependency>
 				</dependencies>
 				<executions>
@@ -252,13 +252,13 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-deploy-plugin</artifactId>
-				<version>3.1.1</version>
+				<version>3.1.2</version>
 			</plugin>
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>3.4.1</version>
 				<configuration>
 					<archive>
 						<manifestEntries>
@@ -319,7 +319,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>3.2.2</version>
+						<version>3.2.4</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
@@ -334,33 +334,5 @@
 			</build>
 		</profile>
 	</profiles>
-
-	<distributionManagement>
-		<snapshotRepository>
-			<id>oss.sonatype.org</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-		</snapshotRepository>
-		<repository>
-			<id>oss.sonatype.org</id>
-			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-		</repository>
-	</distributionManagement>
-
-	<repositories>
-		<repository>
-			<id>sonatype-snapshots</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</repository>
-		<repository>
-			<id>oss.sonatype.org</id>
-			<url>https://oss.sonatype.org/content/repositories/releases/</url>
-		</repository>
-	</repositories>
 
 </project>

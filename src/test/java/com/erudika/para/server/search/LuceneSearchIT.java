@@ -19,17 +19,17 @@ package com.erudika.para.server.search;
 
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.persistence.DAO;
-import static com.erudika.para.server.search.SearchTest.u;
 import com.erudika.para.core.utils.Config;
 import com.erudika.para.core.utils.Pager;
+import static com.erudika.para.server.search.SearchTest.u;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.junit.AfterClass;
-import static org.junit.Assert.assertEquals;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import static org.mockito.Mockito.mock;
+import org.junit.jupiter.api.AfterAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.*;
 
 /**
  *
@@ -37,7 +37,7 @@ import static org.mockito.Mockito.mock;
  */
 public class LuceneSearchIT extends SearchTest {
 
-	@BeforeClass
+	@BeforeAll
 	public static void setUpClass() {
 		System.setProperty("para.env", "embedded");
 		System.setProperty("para.app_name", "para-test");
@@ -48,7 +48,7 @@ public class LuceneSearchIT extends SearchTest {
 		SearchTest.init();
 	}
 
-	@AfterClass
+	@AfterAll
 	public static void tearDownClass() {
 		SearchTest.cleanup();
 	}
