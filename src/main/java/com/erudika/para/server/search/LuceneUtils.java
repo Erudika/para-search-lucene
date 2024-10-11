@@ -127,6 +127,8 @@ public final class LuceneUtils {
 	protected static final Analyzer ANALYZER;
 
 	static {
+		System.setProperty("org.apache.lucene.store.MMapDirectory.enableMemorySegments", "false"); // Java 21+ warning
+
 		SOURCE_FIELD = new FieldType();
 		SOURCE_FIELD.setIndexOptions(IndexOptions.NONE);
 		SOURCE_FIELD.setStored(true);
