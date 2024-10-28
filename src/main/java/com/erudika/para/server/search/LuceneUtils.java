@@ -23,7 +23,6 @@ import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.listeners.DestroyListener;
 import com.erudika.para.core.persistence.DAO;
 import com.erudika.para.core.utils.Config;
-import static com.erudika.para.core.utils.Config.DEFAULT_LIMIT;
 import com.erudika.para.core.utils.Pager;
 import com.erudika.para.core.utils.Para;
 import com.erudika.para.core.utils.ParaObjectUtils;
@@ -68,6 +67,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
@@ -89,7 +89,6 @@ import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -521,7 +520,7 @@ public final class LuceneUtils {
 			String docId = Utils.getNewId();
 			doc.add(new SortedNumericDocValuesField(DOC_ID_FIELD_NAME, NumberUtils.toLong(docId)));
 			doc.add(new Field(DOC_ID_FIELD_NAME, docId, DOC_ID_FIELD));
-		} catch (JsonProcessingException ex) {
+		} catch (Exception ex) {
 			logger.error(null, ex);
 		}
 	}
@@ -757,10 +756,10 @@ public final class LuceneUtils {
 						build();
 			}
 			int maxPerPage = pager.getLimit();
-			int pageNum = (int) pager.getPage();
+			int pageNum = Long.valueOf(pager.getPage()).intValue();
 			TopDocs topDocs;
 
-			if (pageNum <= 1 && !StringUtils.isBlank(pager.getLastKey())) {
+			if (!StringUtils.isBlank(pager.getLastKey())) {
 				// Read the last Document from index to get its docId which is required by "searchAfter".
 				// We can't get it from lastKey beacuse it contains the id of the last ParaObject on the page.
 				Integer lastDocId = getLastDocId(isearcher, pager.getLastKey());
@@ -774,17 +773,20 @@ public final class LuceneUtils {
 			} else {
 				int start = (pageNum < 1 || pageNum > Para.getConfig().maxPages()) ? 0 : (pageNum - 1) * maxPerPage;
 				Sort sort = new Sort(getSortFieldForQuery(ireader, type, pager));
-				TopFieldCollector collector = TopFieldCollector.create(sort, DEFAULT_LIMIT, DEFAULT_LIMIT);
-				isearcher.search(query, collector);
-				topDocs = collector.topDocs(start, maxPerPage);
+				if (pageNum > 1) {
+					topDocs = isearcher.searchAfter(new ScoreDoc(start, 1), query, maxPerPage, sort);
+				} else {
+					topDocs = isearcher.search(query, maxPerPage, sort);
+				}
 			}
 
 			ScoreDoc[] hits = topDocs.scoreDocs;
-			pager.setCount(topDocs.totalHits.value);
+			StoredFields storedFields = isearcher.storedFields();
+			pager.setCount(topDocs.totalHits.value());
 
 			Document[] docs = new Document[hits.length];
 			for (int i = 0; i < hits.length; i++) {
-				docs[i] = isearcher.doc(hits[i].doc);
+				docs[i] = storedFields.document(hits[i].doc);
 			}
 			if (hits.length > 0) {
 				pager.setLastKey(docs[hits.length - 1].get(DOC_ID_FIELD_NAME));
@@ -800,11 +802,13 @@ public final class LuceneUtils {
 	}
 
 	private static Integer getLastDocId(IndexSearcher isearcher, String lastKey) throws IOException {
-		Query lastDoc = new TermQuery(new Term(DOC_ID_FIELD_NAME, lastKey));
-		TopDocs docs = isearcher.search(lastDoc, 1);
-		ScoreDoc[] hits = docs.scoreDocs;
-		if (hits.length > 0) {
-			return hits[0].doc;
+		if (!StringUtils.isBlank(lastKey)) {
+			Query lastDoc = new TermQuery(new Term(DOC_ID_FIELD_NAME, lastKey));
+			TopDocs docs = isearcher.search(lastDoc, 1);
+			ScoreDoc[] hits = docs.scoreDocs;
+			if (hits.length > 0) {
+				return hits[0].doc;
+			}
 		}
 		return null;
 	}
