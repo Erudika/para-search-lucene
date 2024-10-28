@@ -38,7 +38,7 @@
 
 	<scm>
 		<connection>scm:git:https://github.com/erudika/para-search-lucene.git</connection>
-		<developerConnection>scm:git:git@github.com:erudika/para-search-lucene.git</developerConnection>
+		<developerConnection>scm:git:https://github.com/erudika/para-search-lucene.git</developerConnection>
 		<url>https://github.com/erudika/para-search-lucene</url>
 		<tag>HEAD</tag>
 	</scm>
