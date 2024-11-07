@@ -23,6 +23,7 @@ import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.listeners.DestroyListener;
 import com.erudika.para.core.persistence.DAO;
 import com.erudika.para.core.utils.Config;
+import static com.erudika.para.core.utils.Config.DEFAULT_LIMIT;
 import com.erudika.para.core.utils.Pager;
 import com.erudika.para.core.utils.Para;
 import com.erudika.para.core.utils.ParaObjectUtils;
@@ -89,6 +90,9 @@ import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -757,12 +761,14 @@ public final class LuceneUtils {
 			}
 			int maxPerPage = pager.getLimit();
 			int pageNum = Long.valueOf(pager.getPage()).intValue();
-			TopDocs topDocs;
+			ScoreDoc[] hits;
+			long totalHits;
 
-			if (!StringUtils.isBlank(pager.getLastKey())) {
+			if (pageNum <= 1 && !StringUtils.isBlank(pager.getLastKey())) {
 				// Read the last Document from index to get its docId which is required by "searchAfter".
 				// We can't get it from lastKey beacuse it contains the id of the last ParaObject on the page.
 				Integer lastDocId = getLastDocId(isearcher, pager.getLastKey());
+				TopDocs topDocs;
 				if (lastDocId != null) {
 					topDocs = isearcher.searchAfter(new FieldDoc(lastDocId, 1,
 							new Object[]{NumberUtils.toLong(pager.getLastKey())}), query, maxPerPage,
@@ -770,19 +776,29 @@ public final class LuceneUtils {
 				} else {
 					topDocs = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
 				}
+				hits = topDocs.scoreDocs;
+				totalHits = topDocs.totalHits.value();
 			} else {
 				int start = (pageNum < 1 || pageNum > Para.getConfig().maxPages()) ? 0 : (pageNum - 1) * maxPerPage;
 				Sort sort = new Sort(getSortFieldForQuery(ireader, type, pager));
-				if (pageNum > 1) {
-					topDocs = isearcher.searchAfter(new ScoreDoc(start, 1), query, maxPerPage, sort);
-				} else {
-					topDocs = isearcher.search(query, maxPerPage, sort);
-				}
+				TopFieldCollectorManager tcm = new TopFieldCollectorManager(sort, DEFAULT_LIMIT, DEFAULT_LIMIT) {
+					@Override
+					public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) throws IOException {
+						final TopFieldDocs[] topDocs = new TopFieldDocs[collectors.size()];
+						int i = 0;
+						for (TopFieldCollector collector : collectors) {
+							topDocs[i++] = collector.topDocs();
+						}
+						return TopDocs.merge(sort, start, maxPerPage, topDocs);
+					}
+				};
+				TopFieldDocs topFieldDocs = isearcher.search(query, tcm);
+				hits = topFieldDocs.scoreDocs;
+				totalHits = topFieldDocs.totalHits.value();
 			}
 
-			ScoreDoc[] hits = topDocs.scoreDocs;
 			StoredFields storedFields = isearcher.storedFields();
-			pager.setCount(topDocs.totalHits.value());
+			pager.setCount(totalHits);
 
 			Document[] docs = new Document[hits.length];
 			for (int i = 0; i < hits.length; i++) {
@@ -791,7 +807,7 @@ public final class LuceneUtils {
 			if (hits.length > 0) {
 				pager.setLastKey(docs[hits.length - 1].get(DOC_ID_FIELD_NAME));
 			}
-			logger.debug("Lucene query: {} Hits: {}, Total: {}", query, hits.length, topDocs.totalHits);
+			logger.debug("Lucene query: {} Hits: {}, Total: {}", query, hits.length, totalHits);
 			return docs;
 		} catch (Exception e) {
 			Throwable cause = e.getCause();
