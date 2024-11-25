@@ -63,6 +63,7 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
+import static org.apache.lucene.index.DocValuesType.SORTED_NUMERIC;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
@@ -780,7 +781,7 @@ public final class LuceneUtils {
 				totalHits = topDocs.totalHits.value();
 			} else {
 				int start = (pageNum < 1 || pageNum > Para.getConfig().maxPages()) ? 0 : (pageNum - 1) * maxPerPage;
-				Sort sort = new Sort(getSortFieldForQuery(ireader, type, pager));
+				Sort sort = new Sort(getSortFieldsForQuery(ireader, pager));
 				TopFieldCollectorManager tcm = new TopFieldCollectorManager(sort, DEFAULT_LIMIT, DEFAULT_LIMIT) {
 					@Override
 					public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) throws IOException {
@@ -829,21 +830,46 @@ public final class LuceneUtils {
 		return null;
 	}
 
-	private static SortField getSortFieldForQuery(DirectoryReader ireader, String type, Pager pager) {
+	private static SortField[] getSortFieldsForQuery(DirectoryReader ireader, Pager pager) {
 		if (DOC_ID_FIELD_NAME.equals(pager.getSortby())) {
-			return new SortedNumericSortField(DOC_ID_FIELD_NAME, LONG, pager.isDesc());
-		} else {
-			FieldInfo finfo = FieldInfos.getMergedFieldInfos(ireader).fieldInfo(pager.getSortby());
-			if (finfo != null) {
-				switch (finfo.getDocValuesType()) {
-					case SORTED_NUMERIC:
-						return new SortedNumericSortField(pager.getSortby(), DOUBLE, pager.isDesc());
-					default:
-						return new SortField(pager.getSortby(), STRING, pager.isDesc());
+			return new SortField[] {new SortedNumericSortField(DOC_ID_FIELD_NAME, LONG, pager.isDesc())};
+		} else if (pager.getSortby().contains(",")) {
+			String[] fields = pager.getSortby().split(",");
+			ArrayList<SortField> sortFields = new ArrayList<>(fields.length);
+			for (String field : fields) {
+				boolean orderIsDesc;
+				String fieldName;
+				if (field.endsWith(":asc")) {
+					orderIsDesc = false;
+					fieldName = field.substring(0, field.indexOf(":asc")).trim();
+				} else if (field.endsWith(":desc")) {
+					orderIsDesc = true;
+					fieldName = field.substring(0, field.indexOf(":desc")).trim();
+				} else {
+					orderIsDesc = true;
+					fieldName = field.trim();
 				}
-			} else {
-				return new SortField(pager.getSortby(), STRING, pager.isDesc());
+				sortFields.add(getSortFieldForQuery(ireader, fieldName, orderIsDesc));
 			}
+			return sortFields.toArray(SortField[]::new);
+		} else {
+			return new SortField[] {getSortFieldForQuery(ireader, pager.getSortby(), pager.isDesc())};
+		}
+	}
+
+	private static SortField getSortFieldForQuery(DirectoryReader ireader, String field, boolean isDesc) {
+		FieldInfo finfo = FieldInfos.getMergedFieldInfos(ireader).fieldInfo(field);
+		if (StringUtils.isBlank(field)) {
+			return new SortedNumericSortField(Config._TIMESTAMP, LONG, isDesc);
+		} else if (finfo != null) {
+			switch (finfo.getDocValuesType()) {
+				case SORTED_NUMERIC:
+					return new SortedNumericSortField(field, DOUBLE, isDesc);
+				default:
+					return new SortField(field, STRING, isDesc);
+			}
+		} else {
+			return new SortField(field, STRING, isDesc);
 		}
 	}
 
