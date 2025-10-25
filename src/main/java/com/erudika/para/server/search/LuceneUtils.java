@@ -43,7 +43,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -325,12 +324,15 @@ public final class LuceneUtils {
 			logger.debug("rebuildIndex(): {}", indexName);
 			Pager p = getPager(pager);
 			int batchSize = Para.getConfig().reindexBatchSize(p.getLimit());
+			if (batchSize <= 0) {
+				batchSize = p.getLimit();
+			}
 			long reindexedCount = 0;
 
 			List<ParaObject> list;
 			List<Document> docs = new LinkedList<Document>();
 			do {
-				list = dao.readPage(app.getAppIdentifier(), p); // use appid!
+				list = dao.readPage(app.getAppIdentifier(), p); // use app identifier without trimming it
 				logger.debug("rebuildIndex(): Read {} objects from table {}.", list.size(), indexName);
 				for (ParaObject obj : list) {
 					if (obj != null) {
@@ -370,8 +372,7 @@ public final class LuceneUtils {
 					switch (value.getNodeType()) {
 						case OBJECT:
 							String pre = (StringUtils.isBlank(prefix) ? "" : prefix + ".");
-							for (Iterator<Entry<String, JsonNode>> iterator1 = value.fields(); iterator1.hasNext();) {
-								Entry<String, JsonNode> entry = iterator1.next();
+							for (Map.Entry<String, JsonNode> entry : value.properties()) {
 								addFieldToStack(pre + entry.getKey(), entry.getValue(), stack, doc);
 							}
 							break;
