@@ -1,8 +1,4 @@
-FROM eclipse-temurin:21-alpine
-
-RUN mkdir -p /para/lib
-
-WORKDIR /para
+FROM alpine
 
 ENV PARA_PLUGIN_ID="para-search-lucene" \
 	PARA_PLUGIN_VER="1.49.3"
