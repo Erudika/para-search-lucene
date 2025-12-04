@@ -122,7 +122,6 @@ public final class LuceneUtils {
 	private static final int FIELD_LIMIT = 32766; // Lucene limitation for sorted doc values - max field length must be <= 32766 bytes
 
 	private static final Map<String, IndexWriter> WRITERS = new ConcurrentHashMap<String, IndexWriter>();
-//	private static S3Directory s3Directory;
 
 	/**
 	 * Default analyzer.
