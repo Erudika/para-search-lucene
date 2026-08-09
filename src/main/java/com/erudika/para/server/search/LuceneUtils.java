@@ -85,6 +85,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import static org.apache.lucene.search.SortField.Type.DOUBLE;
 import static org.apache.lucene.search.SortField.Type.LONG;
+import static org.apache.lucene.search.SortField.Type.SCORE;
 import static org.apache.lucene.search.SortField.Type.STRING;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.TermQuery;
@@ -111,6 +112,10 @@ public final class LuceneUtils {
 	protected static final String NESTED_FIELD_NAME = "nstd";
 	private static final String SOURCE_FIELD_NAME = "_source";
 	private static final String DOC_ID_FIELD_NAME = "_docid";
+	/**
+	 * Reserved {@code sortby} sentinel for relevance (score) sorting.
+	 */
+	private static final String SCORE_SORT_FIELD = "_score";
 	private static final FieldType ID_FIELD;
 	private static final FieldType DOC_ID_FIELD;
 	private static final FieldType SOURCE_FIELD;
@@ -831,10 +836,16 @@ public final class LuceneUtils {
 	}
 
 	private static SortField[] getSortFieldsForQuery(DirectoryReader ireader, Pager pager) {
-		if (DOC_ID_FIELD_NAME.equals(pager.getSortby())) {
+		String sortby = pager.getSortby();
+		if (DOC_ID_FIELD_NAME.equals(sortby)) {
 			return new SortField[] {new SortedNumericSortField(DOC_ID_FIELD_NAME, LONG, pager.isDesc())};
-		} else if (pager.getSortby().contains(",")) {
-			String[] fields = pager.getSortby().split(",");
+		} else if (StringUtils.isBlank(sortby) || SCORE_SORT_FIELD.equals(sortby)) {
+			// no sortby (or explicit "_score") means relevance/score ordering.
+			// Score's natural order is already highest-first, so reverse the default only
+			// when the pager explicitly asks for ascending order.
+			return new SortField[] {new SortField(null, SCORE, !pager.isDesc())};
+		} else if (sortby.contains(",")) {
+			String[] fields = sortby.split(",");
 			ArrayList<SortField> sortFields = new ArrayList<>(fields.length);
 			for (String field : fields) {
 				boolean orderIsDesc;
@@ -853,15 +864,16 @@ public final class LuceneUtils {
 			}
 			return sortFields.toArray(SortField[]::new);
 		} else {
-			return new SortField[] {getSortFieldForQuery(ireader, pager.getSortby(), pager.isDesc())};
+			return new SortField[] {getSortFieldForQuery(ireader, sortby, pager.isDesc())};
 		}
 	}
 
 	private static SortField getSortFieldForQuery(DirectoryReader ireader, String field, boolean isDesc) {
+		if (StringUtils.isBlank(field) || SCORE_SORT_FIELD.equals(field)) {
+			return new SortField(null, SCORE, !isDesc);
+		}
 		FieldInfo finfo = FieldInfos.getMergedFieldInfos(ireader).fieldInfo(field);
-		if (StringUtils.isBlank(field)) {
-			return new SortedNumericSortField(Config._TIMESTAMP, LONG, isDesc);
-		} else if (finfo != null) {
+		if (finfo != null) {
 			switch (finfo.getDocValuesType()) {
 				case SORTED_NUMERIC:
 					return new SortedNumericSortField(field, DOUBLE, isDesc);

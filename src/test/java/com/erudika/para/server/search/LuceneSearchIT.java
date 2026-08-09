@@ -18,10 +18,12 @@
 package com.erudika.para.server.search;
 
 import com.erudika.para.core.ParaObject;
+import com.erudika.para.core.Sysprop;
 import com.erudika.para.core.persistence.DAO;
 import com.erudika.para.core.utils.Config;
 import com.erudika.para.core.utils.Pager;
 import static com.erudika.para.server.search.SearchTest.u;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,5 +88,52 @@ public class LuceneSearchIT extends SearchTest {
 		assertEquals(2, res2.size());
 		assertEquals(s2.getId(), res2.get(0).getId());
 		assertEquals(s1.getId(), res2.get(1).getId());
+	}
+
+	@Test
+	public void testSortByRelevanceOnUnsetSortby() {
+		// index two docs, one with a term appearing more often than the other.
+		// With an unset sortby the backend must fall back to relevance (score) ordering.
+		Sysprop high = new Sysprop("test-score-high");
+		high.addProperty("text", "buffalo buffalo buffalo buffalo buffalo");
+		Sysprop low = new Sysprop("test-score-low");
+		low.addProperty("text", "buffalo");
+		s.indexAll(Arrays.asList(high, low));
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException ex) {
+		}
+
+		Pager p = new Pager(10);
+		p.setSortby(null);
+		List<ParaObject> res = s.findQuery(high.getType(), "properties.text:buffalo", p);
+		assertEquals(2, res.size());
+		assertEquals(high.getId(), res.get(0).getId());
+		assertEquals(low.getId(), res.get(1).getId());
+
+		s.unindexAll(Arrays.asList(high, low));
+	}
+
+	@Test
+	public void testSortByRelevanceOnExplicitScore() {
+		// "sortby=_score" is accepted as an explicit flag for relevance/score ordering.
+		Sysprop high = new Sysprop("test-score-high2");
+		high.addProperty("text", "sparrow sparrow sparrow sparrow sparrow");
+		Sysprop low = new Sysprop("test-score-low2");
+		low.addProperty("text", "sparrow");
+		s.indexAll(Arrays.asList(high, low));
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException ex) {
+		}
+
+		Pager p = new Pager(10);
+		p.setSortby("_score");
+		List<ParaObject> res = s.findQuery(high.getType(), "properties.text:sparrow", p);
+		assertEquals(2, res.size());
+		assertEquals(high.getId(), res.get(0).getId());
+		assertEquals(low.getId(), res.get(1).getId());
+
+		s.unindexAll(Arrays.asList(high, low));
 	}
 }
