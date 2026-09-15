@@ -640,7 +640,11 @@ public final class LuceneUtils {
 				}
 
 				Builder qsPart = new BooleanQuery.Builder();
-				qsPart.add(qs(queryString, FieldInfos.getIndexedFields(ireader)), BooleanClause.Occur.MUST);
+				Query parsedQuery = qs(queryString, FieldInfos.getIndexedFields(ireader));
+				if (parsedQuery == null) {
+					return Collections.emptyList();
+				}
+				qsPart.add(parsedQuery, BooleanClause.Occur.MUST);
 				Builder filterIdsPart = new BooleanQuery.Builder();
 				for (String id : parentids) {
 					filterIdsPart.add(new TermQuery(new Term(Config._ID, id)), BooleanClause.Occur.SHOULD);
@@ -676,8 +680,12 @@ public final class LuceneUtils {
 			ireader = getIndexReader(appid);
 			if (ireader != null) {
 				Pager page = getPager(pager);
+				Query parsedQuery = qs(query, FieldInfos.getIndexedFields(ireader));
+				if (parsedQuery == null) {
+					return Collections.emptyList();
+				}
 				List<P> docs = searchQuery(dao, appid, searchQueryRaw(ireader, appid, type,
-						qs(query, FieldInfos.getIndexedFields(ireader)), page), page);
+						parsedQuery, page), page);
 				return docs;
 			}
 		} catch (Exception e) {
@@ -752,7 +760,7 @@ public final class LuceneUtils {
 			return new Document[0];
 		}
 		if (query == null) {
-			query = new MatchAllDocsQuery();
+			query = MatchAllDocsQuery.INSTANCE;
 		}
 		if (pager == null) {
 			pager = new Pager();
@@ -950,15 +958,22 @@ public final class LuceneUtils {
 	}
 
 	private static void closeIndexReader(DirectoryReader ireader) {
+		Directory directory = null;
 		try {
 			if (ireader != null) {
+				directory = ireader.directory();
 				ireader.close();
-				if (ireader.directory() != null) {
-					ireader.directory().close();
-				}
 			}
 		} catch (Exception e) {
 			logger.error(null, e);
+		} finally {
+			if (directory != null) {
+				try {
+					directory.close();
+				} catch (Exception e) {
+					logger.error(null, e);
+				}
+			}
 		}
 	}
 
@@ -1050,9 +1065,10 @@ public final class LuceneUtils {
 				return q;
 			} catch (Exception ex) {
 				logger.warn("Failed to parse query string '{}'.", query);
+				return null;
 			}
 		}
-		return new MatchAllDocsQuery();
+		return MatchAllDocsQuery.INSTANCE;
 	}
 
 	static boolean isValidQueryString(String query) {

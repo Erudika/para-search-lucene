@@ -152,7 +152,7 @@ public class LuceneSearch implements Search {
 		if (StringUtils.isBlank(appid)) {
 			return;
 		}
-		Query q = (terms == null || terms.isEmpty()) ? new MatchAllDocsQuery() : getTermsQuery(terms, matchAll);
+		Query q = (terms == null || terms.isEmpty()) ? MatchAllDocsQuery.INSTANCE : getTermsQuery(terms, matchAll);
 		unindexDocuments(appid, q);
 	}
 
@@ -316,7 +316,7 @@ public class LuceneSearch implements Search {
 		if (!StringUtils.isBlank(type)) {
 			query = new TermQuery(new Term(Config._TYPE, type));
 		} else {
-			query = new MatchAllDocsQuery();
+			query = MatchAllDocsQuery.INSTANCE;
 		}
 		return (long) count(appid, query);
 	}
