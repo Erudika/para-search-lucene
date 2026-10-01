@@ -20,6 +20,7 @@ package com.erudika.para.server.search;
 import com.erudika.para.core.Address;
 import com.erudika.para.core.App;
 import com.erudika.para.core.ParaObject;
+import com.erudika.para.core.Sysprop;
 import com.erudika.para.core.listeners.DestroyListener;
 import com.erudika.para.core.persistence.DAO;
 import com.erudika.para.core.utils.Config;
@@ -44,7 +45,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -80,6 +83,7 @@ import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -99,6 +103,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,6 +130,16 @@ public final class LuceneUtils {
 	private static final Analyzer QUERY_STRING_ANALYZER;
 	private static final String[] IGNORED_FIELDS;
 	private static final int FIELD_LIMIT = 32766; // Lucene limitation for sorted doc values - max field length must be <= 32766 bytes
+	/**
+	 * Maximum number of fields which unfielded query terms are expanded to by the query parser.
+	 * Must stay well below Lucene's max boolean clause count (default is 1024), otherwise queries
+	 * with unfielded terms fail to parse with a 'too many boolean clauses' error.
+	 */
+	private static final int MAX_QUERY_FIELDS = 512;
+	/**
+	 * Minimum number of fields to try when parsing a query fails with a 'too many boolean clauses' error.
+	 */
+	private static final int MIN_QUERY_FIELDS = 64;
 
 	private static final Map<String, IndexWriter> WRITERS = new ConcurrentHashMap<String, IndexWriter>();
 
@@ -1041,9 +1056,15 @@ public final class LuceneUtils {
 	}
 
 	/**
-	 * Tries to parse a query string in order to check if it is valid.
+	 * Tries to parse a query string and returns the parsed query.
+	 * Unfielded query terms are expanded to one boolean clause per field, so apps with a large
+	 * index schema (many distinct field names) can exceed Lucene's max boolean clause count
+	 * (default is 1024) and queries fail to parse as a result. In such cases the number of fields
+	 * is reduced and parsing is retried.
 	 * @param query a Lucene query string
-	 * @return the query if valid, or '*' if invalid
+	 * @param fields the indexed fields of an app
+	 * @return the parsed query, a match-all query if the query string is blank or '*', or
+	 * {@code null} if the query string is invalid
 	 */
 	static Query qs(String query, Collection<String> fields) {
 		if (fields == null || fields.isEmpty()) {
@@ -1052,23 +1073,114 @@ public final class LuceneUtils {
 		if (StringUtils.isBlank(query)) {
 			query = "*";
 		}
-		MultiFieldQueryParser parser = new MultiFieldQueryParser(fields.toArray(new String[0]), QUERY_STRING_ANALYZER);
-		parser.setAllowLeadingWildcard(false);
 		//parser.setLowercaseExpandedTerms(false); // DEPRECATED in Lucene 7.x
 		query = query.trim();
 		if (query.length() > 1 && query.startsWith("*")) {
 			query = query.substring(1);
 		}
-		if (!StringUtils.isBlank(query) && !"*".equals(query)) {
+		if (StringUtils.isBlank(query) || "*".equals(query)) {
+			return MatchAllDocsQuery.INSTANCE;
+		}
+		Exception tooManyClauses = null;
+		// tries to avoid the field mapping explosion, similarly to ES
+		for (int limit = MAX_QUERY_FIELDS; limit >= MIN_QUERY_FIELDS; limit /= 2) {
 			try {
-				Query q = parser.parse(query);
-				return q;
+				MultiFieldQueryParser parser = new MultiFieldQueryParser(
+						getBoundedQueryFields(fields, limit).toArray(new String[0]), QUERY_STRING_ANALYZER);
+				parser.setAllowLeadingWildcard(false);
+				Query parsedQuery = parser.parse(query);
+				if (isWithinClauseLimit(parsedQuery)) {
+					return parsedQuery;
+				}
+				tooManyClauses = new IndexSearcher.TooManyNestedClauses(); // retry with fewer fields
 			} catch (Exception ex) {
-				logger.warn("Failed to parse query string '{}'.", query);
-				return null;
+				if (!isTooManyClauses(ex)) {
+					logger.warn("Failed to parse query string '{}'.", query, ex);
+					return null;
+				}
+				tooManyClauses = ex; // retry with fewer fields
 			}
 		}
-		return MatchAllDocsQuery.INSTANCE;
+		logger.warn("Failed to parse query string '{}'.", query, tooManyClauses);
+		return null;
+	}
+
+	/**
+	 * Limits the number of fields to a given size. Well-known text fields take priority
+	 * over the rest which are selected in deterministic (sorted) order.
+	 * @param fields the indexed fields of an app
+	 * @param limit max number of fields to return
+	 * @return a bounded list of fields with at most {@code limit} entries
+	 */
+	static List<String> getBoundedQueryFields(Collection<String> fields, int limit) {
+		if (fields.size() <= limit) {
+			return new ArrayList<>(fields);
+		}
+		ArrayList<String> bounded = new ArrayList<>(limit);
+		bounded.addAll(ParaObjectUtils.getAnnotatedFields(new Sysprop()).keySet());
+		Set<String> sortedFields = new TreeSet<String>(fields);
+		sortedFields.removeAll(bounded);
+		for (String field : sortedFields) {
+			if (bounded.size() >= limit) {
+				break;
+			}
+			// discard long fields or those containing more than one dot: e.g. properites.field.subfield
+			if (StringUtils.countMatches(field, '.') >= 2 || field.length() > 40) {
+				continue;
+			}
+			bounded.add(field);
+		}
+		return bounded;
+	}
+
+	private static boolean isTooManyClauses(Exception ex) {
+		Throwable cause = ex;
+		while (cause != null) {
+			if (cause instanceof IndexSearcher.TooManyClauses) {
+				return true;
+			}
+			cause = cause.getCause();
+		}
+		return false;
+	}
+
+	/**
+	 * Checks if the total number of leaf clauses in a query is within Lucene's max boolean
+	 * clause count (default is 1024). This mirrors the clause count check which
+	 * {@link IndexSearcher} performs when a query is rewritten and executed.
+	 * @param query a parsed query
+	 * @return true if the query is within the clause count limit
+	 */
+	private static boolean isWithinClauseLimit(Query query) {
+		try {
+			query.visit(new QueryVisitor() {
+				private int count;
+				@Override
+				public QueryVisitor getSubVisitor(BooleanClause.Occur occur, Query parent) {
+					return this;
+				}
+				@Override
+				public void visitLeaf(Query leaf) {
+					incrementCount();
+				}
+				@Override
+				public void consumeTerms(Query leafQuery, Term... terms) {
+					incrementCount();
+				}
+				@Override
+				public void consumeTermsMatching(Query query, String field, Supplier<ByteRunAutomaton> automaton) {
+					incrementCount();
+				}
+				private void incrementCount() {
+					if (++count > IndexSearcher.getMaxClauseCount()) {
+						throw new IndexSearcher.TooManyNestedClauses();
+					}
+				}
+			});
+			return true;
+		} catch (IndexSearcher.TooManyClauses ex) {
+			return false;
+		}
 	}
 
 	static boolean isValidQueryString(String query) {
