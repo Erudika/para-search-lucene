@@ -95,7 +95,6 @@ import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TotalHits;
@@ -810,19 +809,22 @@ public final class LuceneUtils {
 			} else {
 				int start = (pageNum < 1 || pageNum > Para.getConfig().maxPages()) ? 0 : (pageNum - 1) * maxPerPage;
 				Sort sort = new Sort(getSortFieldsForQuery(ireader, pager));
-				TopFieldCollectorManager tcm = new TopFieldCollectorManager(sort, DEFAULT_LIMIT, DEFAULT_LIMIT) {
-					@Override
-					public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) throws IOException {
-						final TopFieldDocs[] topDocs = new TopFieldDocs[collectors.size()];
-						int i = 0;
-						for (TopFieldCollector collector : collectors) {
-							topDocs[i++] = collector.topDocs();
-						}
-						return TopDocs.merge(sort, start, maxPerPage, topDocs);
-					}
-				};
+				// Returns the number of top hits that the collector must keep to serve a page.
+				// The window is capped at DEFAULT_LIMIT to keep the former 10,000-hit search limit
+				// and to avoid large pre-allocations.
+				int collectorWindow = Math.max(0, Math.min(start + maxPerPage, DEFAULT_LIMIT));
+				// Return the correct count up to this limit (10000), after that return count=10K
+				int totalHitsThreashold = DEFAULT_LIMIT;
+				TopFieldCollectorManager tcm = new TopFieldCollectorManager(sort, collectorWindow, totalHitsThreashold);
 				TopFieldDocs topFieldDocs = isearcher.search(query, tcm);
-				hits = topFieldDocs.scoreDocs;
+				// Returns the number of documents on a page, clamped to the documents that the collector returned.
+				int available = topFieldDocs.scoreDocs.length;
+				int pageSlice =  Math.max(0, Math.min(maxPerPage, available - start));
+				ScoreDoc[] pageHits = new ScoreDoc[pageSlice];
+				if (pageHits.length > 0) {
+					System.arraycopy(topFieldDocs.scoreDocs, start, pageHits, 0, pageHits.length);
+				}
+				hits = pageHits;
 				totalHits = topFieldDocs.totalHits.value();
 			}
 
