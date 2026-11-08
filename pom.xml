@@ -53,14 +53,14 @@
 		<skipTests>false</skipTests>
 		<skipITs>${skipTests}</skipITs>
 		<skipUTs>${skipTests}</skipUTs>
-		<luceneVer>10.5.1</luceneVer>
+		<luceneVer>10.5.2</luceneVer>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.erudika</groupId>
 			<artifactId>para-core</artifactId>
-			<version>1.56.0</version>
+			<version>1.57.0</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -95,7 +95,7 @@
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-core</artifactId>
-			<version>5.23.0</version>
+			<version>5.24.0</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -122,31 +122,19 @@
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.6.2</version>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.11.0</version>
 				<executions>
 					<execution>
-						<phase>package</phase>
+						<id>write-plugin-deps</id>
+						<phase>generate-resources</phase>
 						<goals>
-							<goal>shade</goal>
+							<goal>list</goal>
 						</goals>
 						<configuration>
-							<minimizeJar>false</minimizeJar>
-							<shadedArtifactAttached>true</shadedArtifactAttached>
-							<createDependencyReducedPom>false</createDependencyReducedPom>
-							<transformers>
-								<transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
-							</transformers>
-							<filters>
-								<filter>
-									<artifact>*:*</artifact>
-									<excludes>
-										<exclude>META-INF/*.SF</exclude>
-										<exclude>META-INF/*.DSA</exclude>
-										<exclude>META-INF/*.RSA</exclude>
-									</excludes>
-								</filter>
-							</filters>
+							<includeScope>runtime</includeScope>
+							<outputFile>${project.build.outputDirectory}/META-INF/para/plugin-deps.txt</outputFile>
+							<outputAbsoluteArtifactFilename>false</outputAbsoluteArtifactFilename>
 						</configuration>
 					</execution>
 				</executions>
@@ -225,7 +213,7 @@
 			<plugin>
 				<groupId>org.sonatype.central</groupId>
 				<artifactId>central-publishing-maven-plugin</artifactId>
-				<version>0.11.0</version>
+				<version>0.12.0</version>
 				<extensions>true</extensions>
 				<configuration>
 					<publishingServerId>central</publishingServerId>
