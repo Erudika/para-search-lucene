@@ -91,8 +91,13 @@ public class LuceneSearch implements Search {
 		if (po == null || StringUtils.isBlank(appid)) {
 			return;
 		}
-		Map<String, Object> data = ParaObjectUtils.getAnnotatedFields(po, null, false);
-		indexDocuments(appid, Collections.singletonList(paraObjectToDocument(appid, data)));
+		try (SlowIndexOperation operation = SlowIndexOperation.start(appid, "index",
+				Collections.singletonList(po.getId()), 1)) {
+			Map<String, Object> data = operation.measure("fieldExtraction",
+					() -> ParaObjectUtils.getAnnotatedFields(po, null, false));
+			Document doc = operation.measure("documentConversion", () -> paraObjectToDocument(appid, data));
+			indexDocuments(appid, Collections.singletonList(doc));
+		}
 	}
 
 	@Override
@@ -113,14 +118,26 @@ public class LuceneSearch implements Search {
 		if (StringUtils.isBlank(appid) || objects == null || objects.isEmpty()) {
 			return;
 		}
-		ArrayList<Document> docs = new ArrayList<>(objects.size());
+		ArrayList<String> objectIds = new ArrayList<>();
 		for (P po : objects) {
-			Map<String, Object> data = ParaObjectUtils.getAnnotatedFields(po, null, false);
-			if (!data.isEmpty()) {
-				docs.add(paraObjectToDocument(appid, data));
+			if (po != null && !StringUtils.isBlank(po.getId())) {
+				objectIds.add(po.getId());
+				if (objectIds.size() == 10) {
+					break;
+				}
 			}
 		}
-		indexDocuments(appid, docs);
+		try (SlowIndexOperation operation = SlowIndexOperation.start(appid, "indexAll", objectIds, objects.size())) {
+			ArrayList<Document> docs = new ArrayList<>(objects.size());
+			for (P po : objects) {
+				Map<String, Object> data = operation.measure("fieldExtraction",
+						() -> ParaObjectUtils.getAnnotatedFields(po, null, false));
+				if (!data.isEmpty()) {
+					docs.add(operation.measure("documentConversion", () -> paraObjectToDocument(appid, data)));
+				}
+			}
+			indexDocuments(appid, docs);
+		}
 	}
 
 	@Override
@@ -365,6 +382,11 @@ public class LuceneSearch implements Search {
 		if (app != null) {
 			LuceneUtils.deleteIndex(app.getAppIdentifier());
 		}
+	}
+
+	//@Override
+	public Map<String, Object> getIndexStats(App app) {
+		return LuceneUtils.getIndexStats(app == null ? Config.PARA : app.getAppIdentifier());
 	}
 
 	//////////////////////////////////////////////////////////////

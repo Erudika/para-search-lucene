@@ -33,6 +33,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -68,6 +70,7 @@ import org.apache.lucene.index.DocValuesType;
 import static org.apache.lucene.index.DocValuesType.SORTED_NUMERIC;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -237,21 +240,34 @@ public final class LuceneUtils {
 		if (docs.isEmpty()) {
 			return;
 		}
-		IndexWriter iwriter = null;
+		SlowIndexOperation operation = SlowIndexOperation.current();
+		if (operation != null) {
+			operation.recordDocuments(docs);
+		}
 		try {
-			iwriter = getIndexWriter(appid);
+			IndexWriter iwriter = operation == null ? getIndexWriter(appid) :
+					operation.measureIO("openWriter", () -> getIndexWriter(appid));
 			if (iwriter != null) {
 				for (Document doc : docs) {
 					if (doc.get(Config._ID) != null) {
 						try {
-							iwriter.updateDocument(new Term(Config._ID, doc.get(Config._ID)), doc);
+							if (operation == null) {
+								iwriter.updateDocument(new Term(Config._ID, doc.get(Config._ID)), doc);
+							} else {
+								operation.measureIO("updateDocument",
+										() -> iwriter.updateDocument(new Term(Config._ID, doc.get(Config._ID)), doc));
+							}
 						} catch (Exception e) {
 							logger.error("Failed to index document " + doc.get(Config._TYPE) + ":" + doc.get(Config._ID)
 									+ " from batch of " + docs.size() + " for app '" + appid + "'", e);
 						}
 					}
 				}
-				iwriter.commit();
+				if (operation == null) {
+					iwriter.commit();
+				} else {
+					operation.measureIO("commit", iwriter::commit);
+				}
 			}
 		} catch (Exception ex) {
 			logger.error(null, ex);
@@ -935,6 +951,66 @@ public final class LuceneUtils {
 		return 0;
 	}
 
+	/**
+	 * Collects statistics about the latest committed index for an application.
+	 * The method does not open an IndexWriter or force a commit.
+	 * The field count is the union of field names across segments. It can include names
+	 * that only remain in deleted documents until Lucene merges their segments.
+	 *
+	 * @param appid appid
+	 * @return index statistics, with zero counts and {@code exists=false} if no index exists.
+	 * The byte count covers files in the latest commit.
+	 */
+	public static Map<String, Object> getIndexStats(String appid) {
+		Map<String, Object> stats = emptyIndexStats();
+		if (StringUtils.isBlank(appid)) {
+			return stats;
+		}
+		Path indexPath = getIndexPath(appid);
+		if (!Files.isDirectory(indexPath)) {
+			return stats;
+		}
+		try (Directory indexDir = FSDirectory.open(indexPath)) {
+			if (!DirectoryReader.indexExists(indexDir)) {
+				return stats;
+			}
+			try (DirectoryReader reader = DirectoryReader.open(indexDir)) {
+				FieldInfos allFields = FieldInfos.getMergedFieldInfos(reader);
+				Collection<String> indexedFields = FieldInfos.getIndexedFields(reader);
+				long indexBytes = 0;
+				IndexCommit commit = reader.getIndexCommit();
+				for (String file : commit.getFileNames()) {
+					indexBytes += indexDir.fileLength(file);
+				}
+				stats.put("exists", true);
+				stats.put("fieldCount", allFields.size());
+				stats.put("indexedFieldCount", indexedFields.size());
+				stats.put("numDocs", reader.numDocs());
+				stats.put("maxDoc", reader.maxDoc());
+				stats.put("deletedDocs", reader.maxDoc() - reader.numDocs());
+				stats.put("segmentCount", reader.leaves().size());
+				stats.put("indexBytes", indexBytes);
+			}
+		} catch (Exception e) {
+			logger.error(null, e);
+			stats.put("error", e.getMessage());
+		}
+		return stats;
+	}
+
+	private static Map<String, Object> emptyIndexStats() {
+		Map<String, Object> stats = new LinkedHashMap<>();
+		stats.put("exists", false);
+		stats.put("fieldCount", 0);
+		stats.put("indexedFieldCount", 0);
+		stats.put("numDocs", 0);
+		stats.put("maxDoc", 0);
+		stats.put("deletedDocs", 0);
+		stats.put("segmentCount", 0);
+		stats.put("indexBytes", 0L);
+		return stats;
+	}
+
 	private static DirectoryReader getIndexReader(String appid) {
 		try {
 			Directory indexDir = getDirectory(appid);
@@ -970,8 +1046,11 @@ public final class LuceneUtils {
 	}
 
 	private static Directory getDirectory(String appid) throws IOException {
-		return FSDirectory.open(FileSystems.getDefault().
-				getPath(Para.getConfig().luceneDataFolder(), "data", getIndexName(appid)));
+		return FSDirectory.open(getIndexPath(appid));
+	}
+
+	private static Path getIndexPath(String appid) {
+		return FileSystems.getDefault().getPath(Para.getConfig().luceneDataFolder(), "data", getIndexName(appid));
 	}
 
 	private static void closeIndexReader(DirectoryReader ireader) {

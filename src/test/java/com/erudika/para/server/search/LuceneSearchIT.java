@@ -22,14 +22,25 @@ import com.erudika.para.core.Sysprop;
 import com.erudika.para.core.persistence.DAO;
 import com.erudika.para.core.utils.Config;
 import com.erudika.para.core.utils.Pager;
+import com.erudika.para.core.utils.Para;
 import static com.erudika.para.server.search.SearchTest.u;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.junit.jupiter.api.AfterAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -169,6 +180,77 @@ public class LuceneSearchIT extends SearchTest {
 		// the result must be deterministic and must keep all fields when below the limit
 		assertEquals(bounded, LuceneUtils.getBoundedQueryFields(fields, 512));
 		assertEquals(fields.size(), LuceneUtils.getBoundedQueryFields(fields, fields.size() + 1).size());
+	}
+
+	@Test
+	public void testGetIndexStats() throws Exception {
+		String statsAppid = "stats-" + UUID.randomUUID();
+		Sysprop traffic = new Sysprop("stats-traffic");
+		traffic.addProperty("users_2026-11-23", Map.of("user-1:profile", 1, "user-2:profile", 2));
+		s.index(statsAppid, traffic);
+		try {
+			Map<String, Object> stats = LuceneUtils.getIndexStats(statsAppid);
+			assertEquals(Boolean.TRUE, stats.get("exists"));
+			assertEquals(1, stats.get("numDocs"));
+			assertEquals(1, stats.get("maxDoc"));
+			assertEquals(0, stats.get("deletedDocs"));
+			assertEquals(1, stats.get("segmentCount"));
+			assertTrue((Integer) stats.get("fieldCount") >= (Integer) stats.get("indexedFieldCount"));
+			assertTrue((Long) stats.get("indexBytes") > 0L);
+		} finally {
+			s.unindex(statsAppid, traffic);
+		}
+	}
+
+	@Test
+	public void testGetIndexStatsDoesNotCreateMissingIndex() throws Exception {
+		String missingAppid = "missing-stats-" + UUID.randomUUID();
+		Path indexPath = Path.of(Para.getConfig().luceneDataFolder(), "data", missingAppid + "-lucene");
+
+		Map<String, Object> stats = LuceneUtils.getIndexStats(missingAppid);
+
+		assertEquals(Boolean.FALSE, stats.get("exists"));
+		assertEquals(0, stats.get("fieldCount"));
+		assertEquals(0, stats.get("indexedFieldCount"));
+		assertEquals(0, stats.get("numDocs"));
+		assertEquals(0, stats.get("maxDoc"));
+		assertEquals(0, stats.get("deletedDocs"));
+		assertEquals(0, stats.get("segmentCount"));
+		assertEquals(0L, stats.get("indexBytes"));
+		assertFalse(Files.exists(indexPath));
+	}
+
+	@Test
+	public void testSlowIndexOperationWarnsWhileRunning() {
+		CountDownLatch warningLogged = new CountDownLatch(1);
+		AtomicReference<String> warning = new AtomicReference<>();
+		SlowIndexOperation operation = SlowIndexOperation.start("slow-test-app", "index",
+				List.of("slow-test-object"), 1, 25L, message -> {
+					warning.set(message);
+					warningLogged.countDown();
+				});
+		Document doc = new Document();
+		doc.add(new StringField("sample-field", "sample-value", Field.Store.NO));
+		operation.recordDocuments(List.of(doc));
+		try (operation) {
+			boolean warnedInStage = operation.measure("documentConversion", () -> {
+				try {
+					return warningLogged.await(2, TimeUnit.SECONDS);
+				} catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+					return false;
+				}
+			});
+			assertTrue(warnedInStage);
+		}
+		assertNotNull(warning.get());
+		assertTrue(warning.get().contains("appid='slow-test-app'"));
+		assertTrue(warning.get().contains("objectIds=[slow-test-object]"));
+		assertTrue(warning.get().contains("operation=index"));
+		assertTrue(warning.get().contains("status=still-running"));
+		assertTrue(warning.get().contains("currentStage=documentConversion"));
+		assertTrue(warning.get().contains("maxFieldCount=1"));
+		assertTrue(warning.get().contains("fieldInstances=1"));
 	}
 
 	@Test

@@ -23,6 +23,7 @@ module com.erudika.para.server.search.lucene {
 	requires com.fasterxml.jackson.databind;
 	requires org.slf4j;
 	requires java.logging;
+	requires java.management;
 	requires org.apache.lucene.analysis.common;
 	requires org.apache.lucene.core;
 	requires org.apache.lucene.queries;
